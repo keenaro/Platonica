@@ -36,7 +36,7 @@ include_directories(source/public/
                     externals/stb/)
 
 file(GLOB EXTERNALS_SOURCES externals/glad/src/glad.c)
-file(GLOB PROJECT_HEADERS source/public/*.hpp)
+file(GLOB PROJECT_HEADERS source/public/*.h)
 file(GLOB PROJECT_SOURCES source/private/*.cpp)
 file(GLOB PROJECT_SHADERS shaders/*.comp
                           shaders/*.frag
