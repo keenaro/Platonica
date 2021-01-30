@@ -1,3 +1,5 @@
+if not exist "build" mkdir build
 cd build
 cmake ..
-pause
+cd ../
+CopyShaders.bat

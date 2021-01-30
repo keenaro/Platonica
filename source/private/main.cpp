@@ -1,8 +1,10 @@
-#include "Renderer.h"
+#include "Window.h"
+#include "TestObjects.h"
 
 int main()
 {
-    Renderer& renderer = Renderer::Instance();
-    renderer.Initialise();
-    renderer.WindowLoop();
+    Window& window = Window::Instance();
+	TriangleObject test;
+
+	window.WindowLoop();
 }

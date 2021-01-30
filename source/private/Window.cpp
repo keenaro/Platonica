@@ -2,12 +2,12 @@
 #include <GLFW/glfw3.h>
 #include <cstdio>
 #include <cstdlib>
-#include "Renderer.h"
+#include "Window.h"
 #include "Defs.h"
 #include <algorithm>
 
 
-void Renderer::WindowLoop()
+void Window::WindowLoop()
 {
 	while (glfwWindowShouldClose(window) == false) {
 		if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -15,6 +15,11 @@ void Renderer::WindowLoop()
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
+
+		for(RenderObject* object : objectsToRender)
+		{
+			object->Draw();
+		}
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -24,7 +29,7 @@ void Renderer::WindowLoop()
 	exit(EXIT_SUCCESS);
 }
 
-void Renderer::Initialise()
+Window::Window()
 {
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -32,7 +37,7 @@ void Renderer::Initialise()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-	window = glfwCreateWindow(1920, 1080, "Platonica", nullptr, nullptr);
+	window = glfwCreateWindow(1080, 1080, "Platonica", nullptr, nullptr);
 
 	if (!window) {
 		puts("Failed to Create OpenGL Context");
@@ -43,9 +48,9 @@ void Renderer::Initialise()
 	gladLoadGL();
 }
 
-void Renderer::StartRenderingObject(const RenderObject* object)
+void Window::StartRenderingObject(RenderObject* object)
 {
-	const std::vector<const RenderObject*>::iterator position = std::find(objectsToRender.begin(), objectsToRender.end(), object);
+	const std::vector<RenderObject*>::iterator position = std::find(objectsToRender.begin(), objectsToRender.end(), object);
 	if(position != objectsToRender.end())
 	{
 		DPRINT("Object already exists in render list.");
@@ -56,9 +61,9 @@ void Renderer::StartRenderingObject(const RenderObject* object)
 	}
 }
 
-void Renderer::StopRenderingObject(const RenderObject* object)
+void Window::StopRenderingObject(RenderObject* object)
 {
-	const std::vector<const RenderObject*>::iterator position = std::find(objectsToRender.begin(), objectsToRender.end(), object);
+	const std::vector<RenderObject*>::iterator position = std::find(objectsToRender.begin(), objectsToRender.end(), object);
 	if (position != objectsToRender.end())
 	{
 		objectsToRender.erase(position);
