@@ -14,7 +14,7 @@ void Window::WindowLoop()
 			glfwSetWindowShouldClose(window, true);
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		for(RenderObject* object : objectsToRender)
 		{
@@ -46,6 +46,9 @@ Window::Window()
 
 	glfwMakeContextCurrent(window);
 	gladLoadGL();
+
+	glEnable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
 }
 
 void Window::StartRenderingObject(RenderObject* object)
