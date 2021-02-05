@@ -11,10 +11,7 @@ bool ShaderLibrary::LoadShader(std::string& shaderName)
 	DPRINTF("Shader: Attempting to load %s.\n", shaderName.c_str());
 
 	std::string vertSource;
-	std::string fragSource;
 	std::ifstream vertShaderFile;
-	std::ifstream fragShaderFile;
-
 	vertShaderFile.open("shaders/" + shaderName + ".vert", std::ifstream::in);
 	if(vertShaderFile.is_open())
 	{
@@ -29,6 +26,8 @@ bool ShaderLibrary::LoadShader(std::string& shaderName)
 		return false;
 	}
 
+	std::string fragSource;
+	std::ifstream fragShaderFile;
 	fragShaderFile.open("shaders/" + shaderName + ".frag", std::ifstream::in);
 	if (fragShaderFile.is_open())
 	{
