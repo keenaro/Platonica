@@ -4,7 +4,7 @@ layout (location = 0) in int VertexData;
 uniform vec3 CameraPosition;
 uniform mat4 ProjectionXform;
 uniform mat4 ViewWorldXform;
-uniform ivec3 WorldOffsetPosition;
+uniform ivec3 RegionPosition;
 uniform ivec3 ChunkPosition;
 
 out vec3 VertexNormal;
@@ -57,7 +57,7 @@ void main()
 
 	VertexNormal = GetNormalFromCubeVertex(VertexData);
 
-	vec3 worldSpacePosition = position + vertPos + ChunkPosition + WorldOffsetPosition;
+	vec3 worldSpacePosition = position + vertPos + ChunkPosition + RegionPosition;
 
 	vec4 ViewPosition = ViewWorldXform * vec4(worldSpacePosition, 1.0);
 

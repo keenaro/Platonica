@@ -1,11 +1,12 @@
 #include "Chunk.h"
 #include "CubeDefs.h"
+#include "World.h"
 
-Chunk::Chunk(bool addToRenderList) : RenderObject(addToRenderList)
+Chunk::Chunk(glm::ivec3& inPosition) : VertexRenderObject(false), Position(inPosition)
 {
-	position = glm::vec3(0);
+	position = inPosition;
 	dirty = true;
-	shader = ShaderLibrary::GetShader(std::string("WorldCubes"));
+	shader = World::Instance().GetShader();
 	GenerateChunkData();
 	GenerateBuffers();
 }
@@ -17,7 +18,7 @@ void Chunk::Draw()
 		GenerateBuffers();
 	}
 
-	RenderObject::Draw();
+	VertexRenderObject::Draw();
 }
 
 void Chunk::SetShaderUniformValues()
@@ -31,16 +32,16 @@ void Chunk::GenerateBuffers()
 	std::vector<unsigned int> ChunkIndices;
 
 	//24 ints per cube, Chunk is 16x16x16 cubes.
-	ChunkVertices.reserve(24 * CHUNK_WIDTH * CHUNK_WIDTH * CHUNK_WIDTH);
+	ChunkVertices.reserve(24 * CHUNK_LENGTH * CHUNK_LENGTH * CHUNK_LENGTH);
 	
 	//36 indices per cube, Chunk is 16x16x16 cubes.
-	ChunkIndices.reserve(36 * CHUNK_WIDTH * CHUNK_WIDTH * CHUNK_WIDTH);
+	ChunkIndices.reserve(36 * CHUNK_LENGTH * CHUNK_LENGTH * CHUNK_LENGTH);
 	
-	for (int z = 0; z < CHUNK_WIDTH; z++)
+	for (int z = 0; z < CHUNK_LENGTH; z++)
 	{
-		for (int y = 0; y < CHUNK_WIDTH; y++)
+		for (int y = 0; y < CHUNK_LENGTH; y++)
 		{
-			for (int x = 0; x < CHUNK_WIDTH; x++)
+			for (int x = 0; x < CHUNK_LENGTH; x++)
 			{
 				const Cube& cube = data[x][y][z];
 	
@@ -56,13 +57,13 @@ void Chunk::GenerateBuffers()
 	BindData(ChunkVertices, ChunkIndices);
 }
 
-void Chunk::UpdateFaces()
+void Chunk::UpdateAllFaces()
 {
-	for (int z = 0; z < CHUNK_WIDTH; z++)
+	for (int z = 0; z < CHUNK_LENGTH; z++)
 	{
-		for (int y = 0; y < CHUNK_WIDTH; y++)
+		for (int y = 0; y < CHUNK_LENGTH; y++)
 		{
-			for (int x = 0; x < CHUNK_WIDTH; x++)
+			for (int x = 0; x < CHUNK_LENGTH; x++)
 			{
 				Cube& cube = data[x][y][z];
 				cube.SetFaceData(CubeFace::All);
@@ -70,19 +71,19 @@ void Chunk::UpdateFaces()
 				if (y > 0 && data[x][y-1][z].CanSee()) 
 					cube.CullFace(CubeFace::Bottom);
 
-				if (y < CHUNK_WIDTH - 1 && data[x][y+1][z].CanSee()) 
+				if (y < CHUNK_LENGTH - 1 && data[x][y+1][z].CanSee())
 					cube.CullFace(CubeFace::Top);
 
 				if (x > 0 && data[x-1][y][z].CanSee()) 
 					cube.CullFace(CubeFace::Right);
 
-				if (x < CHUNK_WIDTH - 1 && data[x+1][y][z].CanSee()) 
+				if (x < CHUNK_LENGTH - 1 && data[x+1][y][z].CanSee())
 					cube.CullFace(CubeFace::Left);
 
 				if (z > 0 && data[x][y][z-1].CanSee()) 
 					cube.CullFace(CubeFace::Back);
 				
-				if (z < CHUNK_WIDTH - 1 && data[x][y][z+1].CanSee()) 
+				if (z < CHUNK_LENGTH - 1 && data[x][y][z+1].CanSee())
 					cube.CullFace(CubeFace::Front);		
 			}
 		}
@@ -224,25 +225,25 @@ int32_t Chunk::GetCubeVertexData(const CubeID cubeID, const glm::ivec3& vertexPo
 
 void Chunk::GenerateChunkData()
 { 
-	for (int z = 0; z < CHUNK_WIDTH; z++)
+	for (int z = 0; z < CHUNK_LENGTH; z++)
 	{
-		for (int y = 0; y < CHUNK_WIDTH; y++)
+		for (int y = 0; y < CHUNK_LENGTH; y++)
 		{
-			for (int x = 0; x < CHUNK_WIDTH; x++)
+			for (int x = 0; x < CHUNK_LENGTH; x++)
 			{
 				data[x][y][z].SetID(CubeID::Dirt);
 			}
 		}
 	}
 
-	UpdateFaces();
+	UpdateAllFaces();
 }
 
 bool Chunk::IsInsideChunk(const glm::vec3& inPos) const
 {
-	return (inPos.x > position.x && inPos.x < position.x + CHUNK_WIDTH &&
-		inPos.y > position.y && inPos.y < position.y + CHUNK_WIDTH &&
-		inPos.z > position.z && inPos.z < position.z + CHUNK_WIDTH);
+	return (inPos.x > position.x && inPos.x < position.x + CHUNK_LENGTH &&
+		inPos.y > position.y && inPos.y < position.y + CHUNK_LENGTH &&
+		inPos.z > position.z && inPos.z < position.z + CHUNK_LENGTH);
 }
 
 void Chunk::SetVertexAttributePointer()

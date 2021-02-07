@@ -9,12 +9,26 @@ public:
 	~RenderObject();
 
 	virtual void Draw();
+	virtual bool ShouldDraw() const { return true; };
+
+	Shader* GetShader() const { return shader; };
+
+protected:
+	virtual void SetShaderUniformValues() {};
+
+protected:
+	Shader* shader;
+};
+
+class VertexRenderObject : public RenderObject
+{
+public:
+	VertexRenderObject(bool addToRenderList = true) : RenderObject(addToRenderList) { };
 
 protected:
 	virtual void SetVertexAttributePointer();
-	virtual void SetShaderUniformValues() {};
-
-	Shader* shader;
+	virtual void Draw() override;
+	virtual bool ShouldDraw() const override;
 
 private:
 	unsigned int VAO, VBO, EBO, IndiceCount;

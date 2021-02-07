@@ -1,21 +1,23 @@
+#pragma once
 #include "RenderObject.h"
-#include "glm/vec3.hpp"
 #include "Cube.h"
+#include "Transform.h"
 
-#define CHUNK_WIDTH 16
+#define CHUNK_LENGTH 16
 
-class Chunk : public RenderObject
+class Chunk : public VertexRenderObject, public Position<glm::ivec3>
 {
 public:
-	Chunk(bool addToRenderList = true);
+	Chunk(glm::ivec3& inPosition);
 
 public:
 	bool IsInsideChunk(const glm::vec3& position) const;
+	void Draw() override;
 
 private:
 	void GenerateBuffers();
 	void GenerateChunkData();
-	void UpdateFaces();
+	void UpdateAllFaces();
 	void AddCubeAtPosition(const glm::ivec3& positionInsideChunk, const Cube& cube, std::vector<int32_t>& vertices, std::vector<unsigned int>& indices) const;
 	glm::ivec3 GetCubePositionFromCubeVertex(int32_t inData) const;
 	glm::ivec3 GetNormalFromCubeVertex(int32_t inData) const;
@@ -23,10 +25,8 @@ private:
 	int32_t GetCubeVertexData(const CubeID cubeID, const glm::ivec3& vertexPosition, const glm::ivec3& position, const glm::ivec3& normal) const;
 	void SetVertexAttributePointer() override;
 	void SetShaderUniformValues() override;
-	void Draw() override;
 
 private:
 	bool dirty;
-	glm::ivec3 position;
-	Cube data[CHUNK_WIDTH][CHUNK_WIDTH][CHUNK_WIDTH];
+	Cube data[CHUNK_LENGTH][CHUNK_LENGTH][CHUNK_LENGTH];
 };

@@ -38,10 +38,10 @@ include_directories(source/public/
 file(GLOB EXTERNALS_SOURCES externals/glad/src/glad.c)
 file(GLOB PROJECT_HEADERS source/public/*.h)
 file(GLOB PROJECT_SOURCES source/private/*.cpp)
-file(GLOB PROJECT_SHADERS shaders/*.comp
-                          shaders/*.frag
-                          shaders/*.geom
-                          shaders/*.vert)
+file(GLOB PROJECT_SHADERS resources/shaders/*.comp
+                          resources/shaders/*.frag
+                          resources/shaders/*.geom
+                          resources/shaders/*.vert)
 file(GLOB PROJECT_CONFIGS CMakeLists.txt
                           Readme.md
                          .gitattributes
@@ -66,5 +66,5 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 add_custom_command(
     TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/shaders $<TARGET_FILE_DIR:${PROJECT_NAME}>
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/resources $<TARGET_FILE_DIR:${PROJECT_NAME}>
     DEPENDS ${PROJECT_SHADERS})

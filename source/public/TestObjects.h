@@ -1,9 +1,10 @@
+#pragma once
 #include "RenderObject.h"
 
-class BoxObject : public RenderObject
+class BoxObject : public VertexRenderObject
 {
 public:
-	BoxObject::BoxObject(bool addToRenderList = true) : RenderObject(addToRenderList)
+	BoxObject::BoxObject(bool addToRenderList = true) : VertexRenderObject(addToRenderList)
 	{
 		const std::vector<float> vertices
 		{
@@ -24,10 +25,10 @@ public:
 	}
 };
 
-class TriangleObject : public RenderObject
+class TriangleObject : public VertexRenderObject
 {
 public:
-	TriangleObject::TriangleObject(bool addToRenderList = true) : RenderObject(addToRenderList)
+	TriangleObject::TriangleObject(bool addToRenderList = true) : VertexRenderObject(addToRenderList)
 	{
 		const std::vector<float> vertices
 		{

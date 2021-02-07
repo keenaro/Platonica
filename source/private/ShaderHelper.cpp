@@ -8,7 +8,7 @@ std::map<std::size_t, Shader> ShaderLibrary::shaderMap;
 
 bool ShaderLibrary::LoadShader(std::string& shaderName)
 {
-	DPRINTF("Shader: Attempting to load %s.\n", shaderName.c_str());
+	DPrintf("Shader: Attempting to load %s.\n", shaderName.c_str());
 
 	std::string vertSource;
 	std::ifstream vertShaderFile;
@@ -22,7 +22,7 @@ bool ShaderLibrary::LoadShader(std::string& shaderName)
 	}
 	else 
 	{
-		DPRINTF("Shader: %s.vert does not exist.\n", shaderName.c_str());
+		DPrintf("Shader: %s.vert does not exist.\n", shaderName.c_str());
 		return false;
 	}
 
@@ -38,7 +38,7 @@ bool ShaderLibrary::LoadShader(std::string& shaderName)
 	}
 	else
 	{
-		DPRINTF("Shader: %s.frag does not exist.\n", shaderName.c_str());
+		DPrintf("Shader: %s.frag does not exist.\n", shaderName.c_str());
 		return false;
 	}
 
@@ -56,7 +56,7 @@ bool ShaderLibrary::LoadShader(std::string& shaderName)
 		if (!shaderStatus)
 		{
 			glGetShaderInfoLog(vertex, 512, NULL, shaderInfoLog);
-			DPRINTF("Shader: %s failed vertex compilation\n%s\n", shaderInfoLog);
+			DPrintf("Shader: %s failed vertex compilation\n%s\n", shaderInfoLog);
 			return false;
 		};
 	}
@@ -70,7 +70,7 @@ bool ShaderLibrary::LoadShader(std::string& shaderName)
 		if (!shaderStatus)
 		{
 			glGetShaderInfoLog(fragment, 512, NULL, shaderInfoLog);
-			DPRINTF("Shader: %s failed fragment compilation\n%s", shaderInfoLog);
+			DPrintf("Shader: %s failed fragment compilation\n%s", shaderInfoLog);
 			return false;
 		};
 	}
@@ -85,7 +85,7 @@ bool ShaderLibrary::LoadShader(std::string& shaderName)
 		if (!shaderStatus)
 		{
 			glGetProgramInfoLog(shader.ID, 512, NULL, shaderInfoLog);
-			DPRINTF("Shader: %s failed linking\n%s", shaderInfoLog);
+			DPrintf("Shader: %s failed linking\n%s", shaderInfoLog);
 			return false;
 		}
 
@@ -94,7 +94,7 @@ bool ShaderLibrary::LoadShader(std::string& shaderName)
 	}
 
 	shaderMap[std::hash<std::string>{} (shaderName)] = shader;
-	DPRINTF("Shader: Loaded %s.\n", shaderName.c_str());
+	DPrintf("Shader: Loaded %s.\n", shaderName.c_str());
 
 	return true;
 }
@@ -111,7 +111,7 @@ Shader* ShaderLibrary::GetShader(std::string& shaderName)
 		}
 		else
 		{
-			DPRINTF("Shader: Failed to get %s.\n", shaderName.c_str());
+			DPrintf("Shader: Failed to get %s.\n", shaderName.c_str());
 			return nullptr;
 		}
 	}

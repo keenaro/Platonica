@@ -1,14 +1,16 @@
 #include "Window.h"
 #include "TestObjects.h"
 #include "CubeDefs.h"
-#include "Chunk.h"
+#include "World.h"
 
 int main()
 {
     Window& window = Window::Instance();
-	TriangleObject test;
 	CubeDefs& cubeDefs = CubeDefs::Instance();
-	Chunk chunk();
+	World& world = World::Instance();
+	
+	world.GenerateChunk(glm::ivec3(0, 0, 0));
+	world.GenerateChunk(glm::ivec3(16, 0, 0));
 
 	window.WindowLoop();
 }

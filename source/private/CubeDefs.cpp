@@ -18,10 +18,10 @@ void CubeDefs::RegisterCubeDef(CubeID cubeID, std::string& cubeName, glm::ivec2&
 	if (search == cubeEntries.end())
 	{
 		cubeEntries[cubeID] = CubeDef(cubeName, cubeTextureCoordinates);
-		DPRINTF("CubeDefs: Registered %s Cube id:%i successfully.\n", cubeName.c_str(), cubeID);
+		DPrintf("CubeDefs: Registered %s Cube id:%i successfully.\n", cubeName.c_str(), cubeID);
 	}
 	else
 	{
-		DPRINTF("CubeDefs: %s Cube id:%i has already been registered.\n", cubeName.c_str(), cubeID);
+		DPrintf("CubeDefs: %s Cube id:%i has already been registered.\n", cubeName.c_str(), cubeID);
 	}
 }
