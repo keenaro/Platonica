@@ -9,6 +9,7 @@ uniform ivec3 ChunkPosition;
 
 out vec3 VertexNormal;
 out vec3 VertexPosition;
+out vec2 TexCoord;
 
 ivec3 GetCubePositionFromCubeVertex(int data)
 {
@@ -51,14 +52,29 @@ ivec2 GetTextureCoordFromCubeVertex(int data)
 
 void main()
 {	
-	ivec3 vertPos = GetVertexPositionFromCubeVertex(VertexData);
-	ivec3 position = GetCubePositionFromCubeVertex(VertexData);
-	ivec2 texCoord = GetTextureCoordFromCubeVertex(VertexData);
-
 	VertexNormal = GetNormalFromCubeVertex(VertexData);
 
-	vec3 worldSpacePosition = position + vertPos + ChunkPosition + RegionPosition;
+	ivec3 vertPos = GetVertexPositionFromCubeVertex(VertexData);
+	ivec3 position = GetCubePositionFromCubeVertex(VertexData);
 
+	const int atlasLength = 64;
+
+	vec3 inverseVertPos = abs(vec3(1) - vertPos);
+
+	vec3 maxNormal = max(vec3(0), -VertexNormal);
+	vec3 maxFlippedNormal = abs(min(vec3(0.0), -VertexNormal));
+
+	vec2 xTexCoord = vec2(vertPos.z, inverseVertPos.y) / atlasLength * maxNormal.x;
+	vec2 yTexCoord = vec2(inverseVertPos.x, vertPos.z) / atlasLength * maxNormal.y;
+	vec2 zTexCoord = vec2(inverseVertPos.x, inverseVertPos.y) / atlasLength * maxNormal.z;
+	vec2 xTexCoordFlipped = vec2(inverseVertPos.z, inverseVertPos.y) / atlasLength * maxFlippedNormal.x;
+	vec2 yTexCoordFlipped = vec2(inverseVertPos.x, inverseVertPos.z) / atlasLength * maxFlippedNormal.y;
+	vec2 zTexCoordFlipped = vec2(vertPos.x, inverseVertPos.y) / atlasLength * maxFlippedNormal.z;
+
+	vec2 startTexCoord = vec2(GetTextureCoordFromCubeVertex(VertexData)) / 64;
+	TexCoord = startTexCoord + xTexCoord + yTexCoord + zTexCoord + xTexCoordFlipped + yTexCoordFlipped + zTexCoordFlipped;
+
+	vec3 worldSpacePosition = position + vertPos + ChunkPosition + RegionPosition;
 	vec4 ViewPosition = ViewWorldXform * vec4(worldSpacePosition, 1.0);
 
     gl_Position = ProjectionXform * ViewPosition;

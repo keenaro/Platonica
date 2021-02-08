@@ -29,7 +29,8 @@ private:
 	std::map<CubeID, CubeDef> cubeEntries;
 
 	CubeDefs();
-	void RegisterCubeDef(CubeID cubeID, std::string& cubeName, glm::ivec2& cubeTextureCoordinates);
+	void RegisterCubeDef(CubeID cubeID, std::string& cubeName, glm::ivec2& allFaceTexCoord);
+	void RegisterCubeDef(CubeID cubeID, std::string& cubeName, glm::ivec2& topFaceTexCoord, glm::ivec2& bottomFaceTexCoord, glm::ivec2& leftFaceTexCoord, glm::ivec2& rightFaceTexCoord, glm::ivec2& frontFaceTexCoord, glm::ivec2& backFaceTexCoord);
 
 public:
 	CubeDefs(CubeDefs const&) = delete;

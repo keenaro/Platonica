@@ -231,7 +231,7 @@ void Chunk::GenerateChunkData()
 		{
 			for (int x = 0; x < CHUNK_LENGTH; x++)
 			{
-				data[x][y][z].SetID(CubeID::Dirt);
+				data[x][y][z].SetID(CubeID::Grass);
 			}
 		}
 	}

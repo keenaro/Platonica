@@ -22,27 +22,9 @@ void Player::Update(float deltaTime)
 
 void Player::ProcessJoystick(float deltaTime)
 {
+	float speedIncrease = 1.f;
+
 	int count;
-	const float* axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &count);
-	if (count)
-	{
-		const float deadzone = 0.5f;
-
-		if (abs(axes[GLFW_GAMEPAD_AXIS_RIGHT_X]) > deadzone || abs(axes[GLFW_GAMEPAD_AXIS_RIGHT_Y]) > deadzone)
-		{
-			Rotate(glm::vec3(GetRotationSpeed().x * axes[GLFW_GAMEPAD_AXIS_RIGHT_X] * deltaTime, GetRotationSpeed().y * axes[GLFW_GAMEPAD_AXIS_RIGHT_Y] * deltaTime, 0.f));
-		}
-
-		if (abs(axes[GLFW_GAMEPAD_AXIS_LEFT_X]) > deadzone)
-		{
-			Move(GetRightDirection() * axes[GLFW_GAMEPAD_AXIS_LEFT_X] * GetMovementSpeed().x * deltaTime);
-		}
-
-		if (abs(axes[GLFW_GAMEPAD_AXIS_LEFT_Y]) > deadzone)
-		{
-			Move(GetDirection() * axes[GLFW_GAMEPAD_AXIS_LEFT_Y] * GetMovementSpeed().z * deltaTime * -1.0f);
-		}
-	}
 
 	const unsigned char* buttons = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &count);
 	if (count)
@@ -55,5 +37,31 @@ void Player::ProcessJoystick(float deltaTime)
 		{
 			Move(glm::vec3(0, -1, 0) * GetMovementSpeed().y * deltaTime);
 		}
+		if (buttons[GLFW_GAMEPAD_BUTTON_LEFT_BUMPER] == GLFW_PRESS)
+		{
+			speedIncrease = 10.0f;
+		}
 	}
+
+	const float* axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &count);
+	if (count)
+	{
+		const float deadzone = 0.5f;
+
+		if (abs(axes[GLFW_GAMEPAD_AXIS_RIGHT_X]) > deadzone || abs(axes[GLFW_GAMEPAD_AXIS_RIGHT_Y]) > deadzone)
+		{
+			Rotate(glm::vec3(GetRotationSpeed().x * axes[GLFW_GAMEPAD_AXIS_RIGHT_X] * deltaTime, GetRotationSpeed().y * axes[GLFW_GAMEPAD_AXIS_RIGHT_Y] * deltaTime, 0.f));
+		}
+
+		if (abs(axes[GLFW_GAMEPAD_AXIS_LEFT_X]) > deadzone)
+		{
+			Move(GetRightDirection() * axes[GLFW_GAMEPAD_AXIS_LEFT_X] * GetMovementSpeed().x * deltaTime * speedIncrease);
+		}
+
+		if (abs(axes[GLFW_GAMEPAD_AXIS_LEFT_Y]) > deadzone)
+		{
+			Move(GetDirection() * axes[GLFW_GAMEPAD_AXIS_LEFT_Y] * GetMovementSpeed().z * deltaTime * -1.0f * speedIncrease);
+		}
+	}
+	
 }
