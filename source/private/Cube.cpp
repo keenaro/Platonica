@@ -22,3 +22,9 @@ void Cube::CullFace(CubeFace faceToCull)
 		SetFaceData(face);
 	}
 }
+
+int Cube::GetNumberOfFaces() const 
+{
+	const CubeFace faces = GetFaceData();
+	return bool(faces & CubeFace::Front) + bool(faces & CubeFace::Back) + bool(faces & CubeFace::Right) + bool(faces & CubeFace::Left) + bool(faces & CubeFace::Bottom) + bool(faces & CubeFace::Top);
+}

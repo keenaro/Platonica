@@ -62,6 +62,5 @@ void Player::ProcessJoystick(float deltaTime)
 		{
 			Move(GetDirection() * axes[GLFW_GAMEPAD_AXIS_LEFT_Y] * GetMovementSpeed().z * deltaTime * -1.0f * speedIncrease);
 		}
-	}
-	
+	}	
 }

@@ -31,6 +31,7 @@ public:
 
 	CubeID GetID() const { return CubeID(m_data >> 16); };
 	CubeFace GetFaceData() const { return CubeFace((m_data >> 10) & 63); };
+	int GetNumberOfFaces() const;
 private:
 	uint32_t m_data;
 };

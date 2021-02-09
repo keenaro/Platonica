@@ -14,9 +14,10 @@ public:
 	bool IsInsideChunk(const glm::vec3& position) const;
 	void Draw() override;
 
+	void GenerateChunkData();
+
 private:
 	void GenerateBuffers();
-	void GenerateChunkData();
 	void UpdateAllFaces();
 	void AddCubeAtPosition(const glm::ivec3& positionInsideChunk, const Cube& cube, std::vector<int32_t>& vertices, std::vector<unsigned int>& indices) const;
 	glm::ivec3 GetCubePositionFromCubeVertex(int32_t inData) const;

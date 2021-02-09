@@ -90,10 +90,6 @@ void Window::StopRenderingObject(RenderObject* object)
 	{
 		objectsToRender.erase(position);
 	}
-	else 
-	{
-		DPrint("Object does not exist in render list.");
-	}
 }
 
 void Window::StartUpdatingObject(UpdateObject* object)
@@ -115,9 +111,5 @@ void Window::StopUpdatingObject(UpdateObject* object)
 	if (position != objectsToUpdate.end())
 	{
 		objectsToUpdate.erase(position);
-	}
-	else
-	{
-		DPrint("Object does not exist in update list.");
 	}
 }

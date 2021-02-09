@@ -2,6 +2,7 @@
 #include "RenderObject.h"
 #include "UpdateObject.h"
 #include "Defs.h"
+#include "AsyncChunkManager.h"
 
 class ChunkRegion;
 class Player;
@@ -25,12 +26,13 @@ public:
 	void Draw() override;
 	void SetShaderUniformValues() override;
 
-	void GenerateChunk(glm::ivec3 pos);
-
 	SharedPtr<Player> GetPlayer() const { return player; };
+	SharedPtr<ChunkRegion> GetOrCreateRegion(glm::ivec3& pos);
+
+	AsyncChunkManager chunkManager;
 
 private:
-	SharedPtr<ChunkRegion> GetOrCreateRegion(glm::ivec3 pos);
+	void LoadTextureAtlas();
 
 private:
 	int regionLength;

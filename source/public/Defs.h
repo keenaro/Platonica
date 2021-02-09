@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <map>
 
 #if _DEBUG
 #define DPrint(x) (puts(x))

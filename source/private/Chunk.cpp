@@ -1,14 +1,13 @@
 #include "Chunk.h"
 #include "CubeDefs.h"
 #include "World.h"
+#include <random>
 
 Chunk::Chunk(glm::ivec3& inPosition) : VertexRenderObject(false), Position(inPosition)
 {
 	position = inPosition;
 	dirty = true;
 	shader = World::Instance().GetShader();
-	GenerateChunkData();
-	GenerateBuffers();
 }
 
 void Chunk::Draw()
@@ -68,23 +67,23 @@ void Chunk::UpdateAllFaces()
 				Cube& cube = data[x][y][z];
 				cube.SetFaceData(CubeFace::All);
 
-				if (y > 0 && data[x][y-1][z].CanSee()) 
+				if (y > 0 && data[x][y - 1][z].CanSee())
 					cube.CullFace(CubeFace::Bottom);
 
-				if (y < CHUNK_LENGTH - 1 && data[x][y+1][z].CanSee())
+				if (y < CHUNK_LENGTH - 1 && data[x][y + 1][z].CanSee())
 					cube.CullFace(CubeFace::Top);
 
-				if (x > 0 && data[x-1][y][z].CanSee()) 
+				if (x > 0 && data[x - 1][y][z].CanSee())
 					cube.CullFace(CubeFace::Right);
 
-				if (x < CHUNK_LENGTH - 1 && data[x+1][y][z].CanSee())
+				if (x < CHUNK_LENGTH - 1 && data[x + 1][y][z].CanSee())
 					cube.CullFace(CubeFace::Left);
 
-				if (z > 0 && data[x][y][z-1].CanSee()) 
+				if (z > 0 && data[x][y][z - 1].CanSee())
 					cube.CullFace(CubeFace::Back);
-				
-				if (z < CHUNK_LENGTH - 1 && data[x][y][z+1].CanSee())
-					cube.CullFace(CubeFace::Front);		
+
+				if (z < CHUNK_LENGTH - 1 && data[x][y][z + 1].CanSee())
+					cube.CullFace(CubeFace::Front);
 			}
 		}
 	}
@@ -93,7 +92,6 @@ void Chunk::UpdateAllFaces()
 void Chunk::AddCubeAtPosition(const glm::ivec3& positionInsideChunk, const Cube& cube, std::vector<int32_t>& vertices, std::vector<unsigned int>& indices) const
 {
 	const CubeFace faces = cube.GetFaceData();
-
 	int indicesStartingIndex = vertices.size();
 
 	if (faces & CubeFace::Back)
@@ -144,13 +142,7 @@ void Chunk::AddCubeAtPosition(const glm::ivec3& positionInsideChunk, const Cube&
 		vertices.push_back(GetCubeVertexData(cube.GetID(), glm::ivec3(1, 1, 0), positionInsideChunk, glm::ivec3(1, 0, 0)));
 	}
 
-	//Quick way of getting how many faces there are. #todo move CubeFace into a class and have relevant functions in there.
-	const int numOfFaces = bool(faces & CubeFace::Front) +
-		bool(faces & CubeFace::Back) +
-		bool(faces & CubeFace::Right) +
-		bool(faces & CubeFace::Left) +
-		bool(faces & CubeFace::Bottom) +
-		bool(faces & CubeFace::Top);
+	const int numOfFaces = cube.GetNumberOfFaces();
 
 	for (int i = 0; i < numOfFaces; i++)
 	{
@@ -223,6 +215,7 @@ int32_t Chunk::GetCubeVertexData(const CubeID cubeID, const glm::ivec3& vertexPo
 	return data;
 }
 
+//Temporary
 void Chunk::GenerateChunkData()
 { 
 	for (int z = 0; z < CHUNK_LENGTH; z++)
@@ -231,7 +224,17 @@ void Chunk::GenerateChunkData()
 		{
 			for (int x = 0; x < CHUNK_LENGTH; x++)
 			{
-				data[x][y][z].SetID(CubeID::Grass);
+				int xTest = (sin(float(position.x + x) * 0.01f) + 0.5f + cos(float(position.z + z) * 0.01f) + 0.5f) * 12;
+
+				CubeID id = Air;
+				if (y < xTest)
+				{
+					if (y < 10) id = CubeID::Stone;
+					else if (y < 15) id = CubeID::Dirt;
+					else id = CubeID::Grass;
+				}
+
+				data[x][y][z].SetID(id);
 			}
 		}
 	}
