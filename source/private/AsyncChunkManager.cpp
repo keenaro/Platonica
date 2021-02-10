@@ -30,7 +30,7 @@ void AsyncChunkManager::MergeCompletedTasks(World& world, bool mergeAll)
 	}
 }
 
-void AsyncChunkManager::RequestTask(glm::ivec3 regionPosition, glm::ivec3 chunkPosition)
+void AsyncChunkManager::RequestTask(glm::ivec3& regionPosition, glm::ivec3& chunkPosition)
 {
 	requestedTasks.push_back(ChunkTask(regionPosition, chunkPosition));
 }

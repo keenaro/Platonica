@@ -18,7 +18,7 @@ CubeDef::CubeDef(std::string& cubeName, glm::ivec2& topFaceTexCoord, glm::ivec2&
 	backTexCoord = ConvertToInt32TextureCoordinate(backFaceTexCoord);
 }
 
-int32_t CubeDef::GetTextureCoordinatesFromNormal(const glm::ivec3 normal) const 
+int32_t CubeDef::GetTextureCoordinatesFromNormal(const glm::ivec3& normal) const 
 {
 	if(normal.x)
 	{

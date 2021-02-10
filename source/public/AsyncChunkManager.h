@@ -30,7 +30,7 @@ public:
 
 public:
 	void MergeCompletedTasks(class World& world, bool mergeAll = false);
-	void RequestTask(glm::ivec3 regionPosition, glm::ivec3 chunkPosition);
+	void RequestTask(glm::ivec3& regionPosition, glm::ivec3& chunkPosition);
 	void Start();
 private:
 	void DoWork();

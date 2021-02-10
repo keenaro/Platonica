@@ -10,7 +10,7 @@ public:
 	CubeDef(std::string& cubeName, glm::ivec2& allTexCoord);
 	CubeDef(std::string& cubeName, glm::ivec2& topFaceTexCoord, glm::ivec2& bottomFaceTexCoord, glm::ivec2& leftFaceTexCoord, glm::ivec2& rightFaceTexCoord, glm::ivec2& frontFaceTexCoord, glm::ivec2& backFaceTexCoord);
 
-	int32_t GetTextureCoordinatesFromNormal(glm::ivec3 normal) const;
+	int32_t GetTextureCoordinatesFromNormal(const glm::ivec3& normal) const;
 	const std::string& GetName() const { return name; };
 
 private:
