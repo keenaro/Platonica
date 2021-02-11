@@ -32,7 +32,9 @@ void AsyncChunkManager::MergeCompletedTasks(World& world, bool mergeAll)
 
 void AsyncChunkManager::RequestTask(glm::ivec3& regionPosition, glm::ivec3& chunkPosition)
 {
-	requestedTasks.push_back(ChunkTask(regionPosition, chunkPosition));
+	while (!requestingTask.try_lock()) {}
+	requestedTasks.push(ChunkTask(regionPosition, chunkPosition));
+	requestingTask.unlock();
 }
 
 void AsyncChunkManager::DoWork()
@@ -41,14 +43,16 @@ void AsyncChunkManager::DoWork()
 	{
 		if (!requestedTasks.empty())
 		{
-			while (!completingTask.try_lock()) {}
+			while (!requestingTask.try_lock()) {}
 			ChunkTask currentTask = requestedTasks.front();
+			requestedTasks.pop();
+			requestingTask.unlock();
+
+			while (!completingTask.try_lock()) {}
 			currentTask.chunk = MakeShared<Chunk>(currentTask.chunkPosition);
 			currentTask.chunk->GenerateChunkData();
 			completedTasks.push(currentTask);
 			completingTask.unlock();
-
-			requestedTasks.pop_front();
 		}
 	}
 }

@@ -36,7 +36,7 @@ private:
 	void DoWork();
 
 private:
-	std::deque<ChunkTask> requestedTasks;
+	std::queue<ChunkTask> requestedTasks;
 	std::queue<ChunkTask> completedTasks;
 	std::thread workThread;
 	std::atomic_bool shouldWork{ true };
