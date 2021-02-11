@@ -11,13 +11,13 @@ public:
 	virtual void Draw();
 	virtual bool ShouldDraw() const { return true; };
 
-	Shader* GetShader() const { return shader; };
+	SharedPtr<Shader> GetShader() const { return shader; };
 
 protected:
 	virtual void SetShaderUniformValues() {};
 
 protected:
-	Shader* shader;
+	SharedPtr<Shader> shader;
 };
 
 class VertexRenderObject : public RenderObject

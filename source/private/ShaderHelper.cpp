@@ -4,7 +4,7 @@
 #include <iostream>
 #include "Defs.h"
 
-std::map<std::size_t, Shader> ShaderLibrary::shaderMap;
+std::map<std::size_t, SharedPtr<Shader>> ShaderLibrary::shaderMap;
 
 bool ShaderLibrary::LoadShader(std::string& shaderName)
 {
@@ -43,7 +43,7 @@ bool ShaderLibrary::LoadShader(std::string& shaderName)
 	}
 
 	unsigned int vertex, fragment;
-	Shader shader;
+	SharedPtr<Shader> shader = MakeShared<Shader>();
 	int shaderStatus;
 	char shaderInfoLog[512];
 
@@ -75,16 +75,16 @@ bool ShaderLibrary::LoadShader(std::string& shaderName)
 		};
 	}
 
-	shader.ID = glCreateProgram();
+	shader->ID = glCreateProgram();
 	{
-		glAttachShader(shader.ID, vertex);
-		glAttachShader(shader.ID, fragment);
-		glLinkProgram(shader.ID);
+		glAttachShader(shader->ID, vertex);
+		glAttachShader(shader->ID, fragment);
+		glLinkProgram(shader->ID);
 
-		glGetProgramiv(shader.ID, GL_LINK_STATUS, &shaderStatus);
+		glGetProgramiv(shader->ID, GL_LINK_STATUS, &shaderStatus);
 		if (!shaderStatus)
 		{
-			glGetProgramInfoLog(shader.ID, 512, NULL, shaderInfoLog);
+			glGetProgramInfoLog(shader->ID, 512, NULL, shaderInfoLog);
 			DPrintf("Shader: %s failed linking\n%s", shaderInfoLog);
 			return false;
 		}
@@ -99,10 +99,10 @@ bool ShaderLibrary::LoadShader(std::string& shaderName)
 	return true;
 }
 
-Shader* ShaderLibrary::GetShader(std::string& shaderName)
+SharedPtr<Shader> ShaderLibrary::GetShader(std::string& shaderName)
 {
 	const std::size_t hash = std::hash<std::string>{} (shaderName);
-	std::map<std::size_t, Shader>::iterator search = shaderMap.find(hash);
+	std::map<std::size_t, SharedPtr<Shader>>::iterator search = shaderMap.find(hash);
 	if(search == shaderMap.end())
 	{
 		if(LoadShader(shaderName))
@@ -116,5 +116,5 @@ Shader* ShaderLibrary::GetShader(std::string& shaderName)
 		}
 	}
 
-	return &search->second;
+	return search->second;
 }

@@ -5,6 +5,7 @@
 #include <map>
 #include <string>
 #include <functional>
+#include "Defs.h"
 
 class Shader
 {
@@ -25,9 +26,9 @@ class ShaderLibrary
 {
 public:
 	static bool LoadShader(std::string& shaderName);
-	static Shader* GetShader(std::string& shaderName);
+	static SharedPtr<Shader> GetShader(std::string& shaderName);
 
 private:
-	static std::map<std::size_t, Shader> shaderMap;
+	static std::map<std::size_t, SharedPtr<Shader>> shaderMap;
 };
 
