@@ -39,7 +39,7 @@ void AsyncChunkManager::DoWork()
 {
 	while (shouldWork)
 	{
-		while (!requestedTasks.empty())
+		if (!requestedTasks.empty())
 		{
 			while (!completingTask.try_lock()) {}
 			ChunkTask currentTask = requestedTasks.front();
