@@ -31,13 +31,23 @@ public:
 
 	AsyncChunkManager chunkManager;
 
+	bool TryIncrementChunkGenBufferCount();
+
 private:
 	void LoadTextureAtlas();
+	void TryRequestChunks();
 
 private:
 	int regionLength;
 	SharedMap3<ChunkRegion> regions;
 	SharedPtr<Player> player;
+	std::vector<glm::ivec3> chunkPositionsInRange;
+
+
+//Optimisations
+private:
+	const int maxChunkBufferGensPerTick = 10;
+	int currentChunkBufferCount = 0;
 
 public:
 	World(World const&) = delete;

@@ -11,10 +11,12 @@ public:
 	void Draw() override;
 	void SetShaderUniformValues() override;
 
-	void InsertChunk(SharedPtr<Chunk> chunk);
+	SharedPtr<Chunk> ChunkRegion::TryCreateChunk(glm::ivec3& chunkPosition);
 
 	bool IsInsideRegion(glm::vec3& inPosition) const;
 	bool IsInsideRegion(glm::ivec3& inPosition) const { IsInsideRegion(glm::vec3(inPosition)); };
+
+	SharedPtr<Chunk> GetChunk(glm::ivec3& chunkPosition);
 
 private:
 	SharedMap3<Chunk> chunks;

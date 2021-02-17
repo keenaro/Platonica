@@ -13,27 +13,10 @@ void AsyncChunkManager::Start()
 	workThread = std::thread(&AsyncChunkManager::DoWork, this);
 }
 
-void AsyncChunkManager::MergeCompletedTasks(World& world, bool mergeAll)
-{
-	if (completingTask.try_lock())
-	{
-		while(!completedTasks.empty())
-		{
-			ChunkTask task = completedTasks.front();
-			world.GetOrCreateRegion(task.regionPosition)->InsertChunk(task.chunk);
-			completedTasks.pop();
-
-			if (!mergeAll) break;
-		}
-
-		completingTask.unlock();
-	}
-}
-
-void AsyncChunkManager::RequestTask(glm::ivec3& regionPosition, glm::ivec3& chunkPosition)
+void AsyncChunkManager::RequestTask(SharedPtr<Chunk> chunk)
 {
 	while (!requestingTask.try_lock()) {}
-	requestedTasks.push(ChunkTask(regionPosition, chunkPosition));
+	requestedTasks.push(chunk);
 	requestingTask.unlock();
 }
 
@@ -44,15 +27,10 @@ void AsyncChunkManager::DoWork()
 		if (!requestedTasks.empty())
 		{
 			while (!requestingTask.try_lock()) {}
-			ChunkTask currentTask = requestedTasks.front();
+			SharedPtr<Chunk> currentChunkTask = requestedTasks.front();
 			requestedTasks.pop();
 			requestingTask.unlock();
-
-			while (!completingTask.try_lock()) {}
-			currentTask.chunk = MakeShared<Chunk>(currentTask.chunkPosition);
-			currentTask.chunk->GenerateChunkData();
-			completedTasks.push(currentTask);
-			completingTask.unlock();
+			currentChunkTask->GenerateChunkData();
 		}
 	}
 }

@@ -1,6 +1,7 @@
 #include "World.h"
 #include "ChunkRegion.h"
 #include "Player.h"
+#include <algorithm>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -15,8 +16,9 @@ World::World(int inRegionLength) : RenderObject(true), UpdateObject(true)
 
 void World::Draw() 
 {
-	RenderObject::Draw();
+	currentChunkBufferCount = 0;
 
+	RenderObject::Draw();
 	IterateMap3(regions)
 	{
 		if (SharedPtr<ChunkRegion> region = mapIt.second)
@@ -28,8 +30,33 @@ void World::Draw()
 
 void World::Update(float deltaTime)
 {
-	chunkManager.MergeCompletedTasks(*this);
 	player->Update(deltaTime);
+	TryRequestChunks();	
+}
+
+void World::TryRequestChunks()
+{
+	const int renderDistance = 5;
+	const glm::ivec3 playerPositionChunkSpace = player->GetPosition() * (1.f / CHUNK_LENGTH);
+	std::vector<glm::ivec3> newChunkPositionsInRange;
+	for (int z = -renderDistance; z < renderDistance; z++)
+	{
+		for (int y = -renderDistance; y < renderDistance; y++)
+		{
+			for (int x = -renderDistance; x < renderDistance; x++)
+			{
+				glm::ivec3& chunkPosition = playerPositionChunkSpace + glm::ivec3(x, y, z);
+				glm::ivec3& regionPosition = glm::ivec3(0, 0, 0); // HARD CODED FIX PLS
+
+				const SharedPtr<ChunkRegion> region = GetOrCreateRegion(regionPosition);
+				SharedPtr<Chunk> chunk = region->TryCreateChunk(chunkPosition);
+				if (chunk)
+				{
+					chunkManager.RequestTask(chunk);
+				}
+			}
+		}
+	}
 }
 
 SharedPtr<ChunkRegion> World::GetOrCreateRegion(glm::ivec3& pos)
@@ -73,4 +100,11 @@ void World::LoadTextureAtlas()
 		DPrint("Failed to load texture");
 	}
 	stbi_image_free(data);
+}
+
+bool World::TryIncrementChunkGenBufferCount()
+{
+	const bool shouldIncrement = currentChunkBufferCount < maxChunkBufferGensPerTick;
+	currentChunkBufferCount += shouldIncrement;
+	return currentChunkBufferCount < maxChunkBufferGensPerTick;
 }

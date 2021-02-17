@@ -15,15 +15,23 @@ void ChunkRegion::Draw()
 	{
 		if (SharedPtr<Chunk> chunk = mapIt.second)
 		{
-			chunk->Draw();
+			if (chunk->ShouldDraw())
+			{
+				chunk->Draw();
+			}
 		}
 	}
 }
 
-void ChunkRegion::InsertChunk(SharedPtr<Chunk> chunk)
+SharedPtr<Chunk> ChunkRegion::TryCreateChunk(glm::ivec3& chunkPosition)
 {
-	glm::ivec3 chunkPos = chunk->GetPosition();
-	chunks[chunkPos.x][chunkPos.y][chunkPos.z] = chunk;
+	if(!chunks[chunkPosition.x][chunkPosition.y][chunkPosition.z])
+	{
+		chunks[chunkPosition.x][chunkPosition.y][chunkPosition.z] = MakeShared<Chunk>(chunkPosition);
+		return chunks[chunkPosition.x][chunkPosition.y][chunkPosition.z];
+	}
+
+	return nullptr;
 }
 
 void ChunkRegion::SetShaderUniformValues()
@@ -38,4 +46,9 @@ bool ChunkRegion::IsInsideRegion(glm::vec3& inPosition) const
 	return (inPosition.x > position.x && inPosition.x < position.x + regionLength * CHUNK_LENGTH && 
 			inPosition.y > position.y && inPosition.y < position.y + regionLength * CHUNK_LENGTH && 
 			inPosition.z > position.z && inPosition.z < position.z + regionLength * CHUNK_LENGTH);
+}
+
+SharedPtr<Chunk> ChunkRegion::GetChunk(glm::ivec3& chunkPosition)
+{
+	return chunks[chunkPosition.x][chunkPosition.y][chunkPosition.z];
 }

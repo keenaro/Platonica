@@ -10,14 +10,5 @@ int main()
 	CubeDefs& cubeDefs = CubeDefs::Instance();
 	World& world = World::Instance();
 
-	const int length = 16;
-	for(int z = -length; z < length; z++)
-	{
-		for (int x = -length; x < length; x++)
-		{
-			world.chunkManager.RequestTask(glm::ivec3(0, 0, 0), glm::ivec3(x*16, -16, z*16));
-		}
-	}
-
 	window.WindowLoop();
 }

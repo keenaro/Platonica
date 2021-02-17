@@ -13,11 +13,15 @@ public:
 public:
 	bool IsInsideChunk(const glm::vec3& position) const;
 	void Draw() override;
+	bool ShouldDraw() const override;
 
 	void GenerateChunkData();
 
+	static int maxChunkBufferGensPerTick;
+	static int currentChunkBufferCount;
+
 private:
-	void GenerateBuffers();
+	bool GenerateBuffers();
 	void UpdateAllFaces();
 	void AddCubeAtPosition(const glm::ivec3& positionInsideChunk, const Cube& cube, std::vector<int32_t>& vertices, std::vector<unsigned int>& indices) const;
 	glm::ivec3 GetCubePositionFromCubeVertex(int32_t inData) const;
@@ -28,6 +32,8 @@ private:
 	void SetShaderUniformValues() override;
 
 private:
-	bool dirty;
+	bool dirty = true;
 	Cube data[CHUNK_LENGTH][CHUNK_LENGTH][CHUNK_LENGTH];
+	bool loaded = false;
+
 };

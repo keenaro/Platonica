@@ -10,50 +10,53 @@ Chunk::Chunk(glm::ivec3& inPosition) : VertexRenderObject(false), Position(inPos
 	shader = World::Instance().GetShader();
 }
 
+bool Chunk::ShouldDraw() const
+{
+	return loaded;
+}
+
 void Chunk::Draw()
 {
-	if(dirty)
+	if(!dirty || GenerateBuffers())
 	{
-		GenerateBuffers();
+		VertexRenderObject::Draw();
 	}
-
-	VertexRenderObject::Draw();
 }
 
 void Chunk::SetShaderUniformValues()
 {
-	shader->SetIVector3("ChunkPosition", position);
+	shader->SetIVector3("ChunkPosition", position*CHUNK_LENGTH);
 }
 
-void Chunk::GenerateBuffers()
+bool Chunk::GenerateBuffers()
 {
-	std::vector<int32_t> ChunkVertices;
-	std::vector<unsigned int> ChunkIndices;
-
-	//24 ints per cube, Chunk is 16x16x16 cubes.
-	ChunkVertices.reserve(24 * CHUNK_LENGTH * CHUNK_LENGTH * CHUNK_LENGTH);
-	
-	//36 indices per cube, Chunk is 16x16x16 cubes.
-	ChunkIndices.reserve(36 * CHUNK_LENGTH * CHUNK_LENGTH * CHUNK_LENGTH);
-	
-	for (int z = 0; z < CHUNK_LENGTH; z++)
+	if (World::Instance().TryIncrementChunkGenBufferCount())
 	{
-		for (int y = 0; y < CHUNK_LENGTH; y++)
+		std::vector<int32_t> ChunkVertices;
+		std::vector<unsigned int> ChunkIndices;
+
+		for (int z = 0; z < CHUNK_LENGTH; z++)
 		{
-			for (int x = 0; x < CHUNK_LENGTH; x++)
+			for (int y = 0; y < CHUNK_LENGTH; y++)
 			{
-				const Cube& cube = data[x][y][z];
-	
-				if (cube.CanSee())
+				for (int x = 0; x < CHUNK_LENGTH; x++)
 				{
-					AddCubeAtPosition(glm::ivec3(x, y, z), cube, ChunkVertices, ChunkIndices);
+					const Cube& cube = data[x][y][z];
+
+					if (cube.CanSee())
+					{
+						AddCubeAtPosition(glm::ivec3(x, y, z), cube, ChunkVertices, ChunkIndices);
+					}
 				}
 			}
 		}
+
+		dirty = false;
+		BindData(ChunkVertices, ChunkIndices);
+		return true;
 	}
-	
-	dirty = false;
-	BindData(ChunkVertices, ChunkIndices);
+
+	return false;
 }
 
 void Chunk::UpdateAllFaces()
@@ -215,7 +218,6 @@ int32_t Chunk::GetCubeVertexData(const CubeID cubeID, const glm::ivec3& vertexPo
 	return data;
 }
 
-//Temporary
 void Chunk::GenerateChunkData()
 { 
 	for (int z = 0; z < CHUNK_LENGTH; z++)
@@ -224,10 +226,10 @@ void Chunk::GenerateChunkData()
 		{
 			for (int x = 0; x < CHUNK_LENGTH; x++)
 			{
-				int xTest = (sin(float(position.x + x) * 0.01f) + 0.5f + cos(float(position.z + z) * 0.01f) + 0.5f) * 12;
+				//int xTest = (sin(float(position.x + x) * 0.01f) + 0.5f + cos(float(position.z + z) * 0.01f) + 0.5f) * 12;
 
 				CubeID id = Air;
-				if (y < xTest)
+				//if (y < xTest)
 				{
 					if (y < 10) id = CubeID::Stone;
 					else if (y < 15) id = CubeID::Dirt;
@@ -240,6 +242,7 @@ void Chunk::GenerateChunkData()
 	}
 
 	UpdateAllFaces();
+	loaded = true;
 }
 
 bool Chunk::IsInsideChunk(const glm::vec3& inPos) const
