@@ -222,18 +222,35 @@ void Chunk::GenerateChunkData()
 { 
 	for (int z = 0; z < CHUNK_LENGTH; z++)
 	{
-		for (int y = 0; y < CHUNK_LENGTH; y++)
+		for (int x = 0; x < CHUNK_LENGTH; x++)
 		{
-			for (int x = 0; x < CHUNK_LENGTH; x++)
+			World& world = World::Instance();
+			const int regionLength = world.GetRegionLength();
+
+			const glm::ivec3 WSChunkPosition = position * CHUNK_LENGTH;
+
+			const int frequency = 64;
+			const unsigned int baseHeight = 10;
+			const float inclineMultiplier = 50.0f;
+
+			const float pNoise = world.perlin.PNoise(glm::vec3(float(x + WSChunkPosition.x) / frequency, float(z + WSChunkPosition.z) / frequency, 0.0f), glm::ivec3(regionLength, regionLength, 1.0f));
+
+			const int noise = pNoise * inclineMultiplier + baseHeight;
+
+			for (int y = 0; y < CHUNK_LENGTH; y++)
 			{
-				//int xTest = (sin(float(position.x + x) * 0.01f) + 0.5f + cos(float(position.z + z) * 0.01f) + 0.5f) * 12;
+				const int caveFreq = 16;
+				const float caveInclineMultiplier = position.y;
+				const int caveThreshold = 1;
+				const float testNoise = world.perlin.PNoise(glm::vec3(float(x + WSChunkPosition.x) / caveFreq, float(z + WSChunkPosition.z) / caveFreq, float(y + WSChunkPosition.y) / caveFreq), glm::ivec3(regionLength, regionLength, 10000.0f));
+				const int tnoise = testNoise * caveInclineMultiplier;
 
 				CubeID id = Air;
-				//if (y < xTest)
+				if (WSChunkPosition.y + y < noise)
 				{
-					if (y < 10) id = CubeID::Stone;
-					else if (y < 15) id = CubeID::Dirt;
-					else id = CubeID::Grass;
+					id = WSChunkPosition.y + y + 1 == noise ? Grass : WSChunkPosition.y + y + 5 > noise ? Dirt : Stone;
+
+					if (WSChunkPosition.y + y < noise-5 && tnoise > caveThreshold) id = Air;
 				}
 
 				data[x][y][z].SetID(id);

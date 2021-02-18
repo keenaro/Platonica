@@ -3,6 +3,7 @@
 #include "UpdateObject.h"
 #include "Defs.h"
 #include "AsyncChunkManager.h"
+#include "PerlinNoise.h"
 
 class ChunkRegion;
 class Player;
@@ -30,6 +31,7 @@ public:
 	SharedPtr<ChunkRegion> GetOrCreateRegion(glm::ivec3& pos);
 
 	AsyncChunkManager chunkManager;
+	PerlinNoise perlin;
 
 	bool TryIncrementChunkGenBufferCount();
 
@@ -46,7 +48,8 @@ private:
 
 //Optimisations
 private:
-	const int maxChunkBufferGensPerTick = 10;
+	const int renderDistance = 10;
+	const int maxChunkBufferGensPerTick = 100;
 	int currentChunkBufferCount = 0;
 
 public:

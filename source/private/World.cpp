@@ -2,6 +2,7 @@
 #include "ChunkRegion.h"
 #include "Player.h"
 #include <algorithm>
+#include "PerlinNoise.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -36,7 +37,6 @@ void World::Update(float deltaTime)
 
 void World::TryRequestChunks()
 {
-	const int renderDistance = 5;
 	const glm::ivec3 playerPositionChunkSpace = player->GetPosition() * (1.f / CHUNK_LENGTH);
 	std::vector<glm::ivec3> newChunkPositionsInRange;
 	for (int z = -renderDistance; z < renderDistance; z++)
