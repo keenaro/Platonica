@@ -2,6 +2,8 @@
 #include "CubeDefs.h"
 #include "World.h"
 #include <random>
+#include "Player.h"
+#include "Defs.h"
 
 Chunk::Chunk(glm::ivec3& inPosition) : VertexRenderObject(false), Position(inPosition)
 {
@@ -10,17 +12,29 @@ Chunk::Chunk(glm::ivec3& inPosition) : VertexRenderObject(false), Position(inPos
 	shader = World::Instance().GetShader();
 }
 
-bool Chunk::ShouldDraw() const
+bool Chunk::ShouldDraw(const glm::ivec3& chunkRegionWorldPosition) const
 {
-	return loaded;
+	const World& world = World::Instance();
+	const float renderDistance = world.GetRenderDistance();
+	const SharedPtr<Player> player = world.GetPlayer();
+	const glm::vec3& cameraPosition = player->GetPosition();
+	const glm::vec3& cameraDirection = player->GetDirection();
+	const glm::vec3& chunkWorldPosition = GetWorldPosition() + chunkRegionWorldPosition;
+
+	const bool IsInfront = glm::fastNormalizeDot(chunkWorldPosition - cameraPosition + cameraDirection * CHUNK_LENGTH, cameraDirection) > 0.25f;
+	const bool IsWithinRenderDistance = glm::distance(cameraPosition, chunkWorldPosition) < renderDistance;
+
+	return loaded && (dirty || VertexRenderObject::ShouldDraw()) && IsInfront && IsWithinRenderDistance;
 }
 
 void Chunk::Draw()
 {
-	if(!dirty || GenerateBuffers())
+	if (dirty)
 	{
-		VertexRenderObject::Draw();
+		GenerateBuffers();
 	}
+
+	VertexRenderObject::Draw();
 }
 
 void Chunk::SetShaderUniformValues()
@@ -28,35 +42,29 @@ void Chunk::SetShaderUniformValues()
 	shader->SetIVector3("ChunkPosition", position*CHUNK_LENGTH);
 }
 
-bool Chunk::GenerateBuffers()
+void Chunk::GenerateBuffers()
 {
-	if (World::Instance().TryIncrementChunkGenBufferCount())
+	std::vector<int32_t> ChunkVertices;
+	std::vector<unsigned int> ChunkIndices;
+
+	for (int z = 0; z < CHUNK_LENGTH; z++)
 	{
-		std::vector<int32_t> ChunkVertices;
-		std::vector<unsigned int> ChunkIndices;
-
-		for (int z = 0; z < CHUNK_LENGTH; z++)
+		for (int y = 0; y < CHUNK_LENGTH; y++)
 		{
-			for (int y = 0; y < CHUNK_LENGTH; y++)
+			for (int x = 0; x < CHUNK_LENGTH; x++)
 			{
-				for (int x = 0; x < CHUNK_LENGTH; x++)
-				{
-					const Cube& cube = data[x][y][z];
+				const Cube& cube = data[x][y][z];
 
-					if (cube.CanSee())
-					{
-						AddCubeAtPosition(glm::ivec3(x, y, z), cube, ChunkVertices, ChunkIndices);
-					}
+				if (cube.CanSee())
+				{
+					AddCubeAtPosition(glm::ivec3(x, y, z), cube, ChunkVertices, ChunkIndices);
 				}
 			}
 		}
-
-		dirty = false;
-		BindData(ChunkVertices, ChunkIndices);
-		return true;
 	}
 
-	return false;
+	dirty = false;
+	BindData(ChunkVertices, ChunkIndices);
 }
 
 void Chunk::UpdateAllFaces()

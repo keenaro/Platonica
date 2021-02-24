@@ -28,6 +28,7 @@ public:
 
 	glm::vec3 GetDirection() const;
 	glm::vec3 GetRightDirection() const;
+	glm::vec3 GetUpDirection() const;
 
 protected:
 	glm::vec3 rotation;

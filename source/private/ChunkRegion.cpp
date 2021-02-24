@@ -1,7 +1,8 @@
 #include "ChunkRegion.h"
 #include "World.h"
+#include "Player.h"
 
-ChunkRegion::ChunkRegion(glm::ivec3& inPosition) : RenderObject(false), Position(inPosition)
+ChunkRegion::ChunkRegion(glm::ivec3& inPosition) : RenderObject(false), Position(inPosition), UpdateObject(false)
 {
 	position = inPosition;
 	shader = World::Instance().GetShader();
@@ -11,11 +12,13 @@ void ChunkRegion::Draw()
 {
 	RenderObject::Draw();
 
-	IterateMap3(chunks)
+	const glm::ivec3& regionWorldPosition = GetWorldPosition();
+
+	for (auto& it : chunks)
 	{
-		if (SharedPtr<Chunk> chunk = mapIt.second)
+		if (SharedPtr<Chunk> chunk = it.second)
 		{
-			if (chunk->ShouldDraw())
+			if (chunk->ShouldDraw(regionWorldPosition))
 			{
 				chunk->Draw();
 			}
@@ -23,12 +26,36 @@ void ChunkRegion::Draw()
 	}
 }
 
+void ChunkRegion::Update(float deltaTime)
+{
+	RemoveOutOfDistanceChunks();
+}
+
+void ChunkRegion::RemoveOutOfDistanceChunks()
+{
+	const World& world = World::Instance();
+	const glm::vec3 playerPos = world.GetPlayer()->GetPosition();
+	const int offloadDistance = world.GetOffloadDistance();
+
+	for (auto& it = chunks.cbegin(); it != chunks.cend();)
+	{
+		if (it->second && glm::distance(glm::vec3(GetChunkWorldPosition(it->second)), playerPos) > offloadDistance)
+		{
+			chunks.erase(it++);
+		}
+		else
+		{
+			++it;
+		}
+	}
+}
+
 SharedPtr<Chunk> ChunkRegion::TryCreateChunk(glm::ivec3& chunkPosition)
 {
-	if(!chunks[chunkPosition.x][chunkPosition.y][chunkPosition.z])
+	if (!chunks[chunkPosition])
 	{
-		chunks[chunkPosition.x][chunkPosition.y][chunkPosition.z] = MakeShared<Chunk>(chunkPosition);
-		return chunks[chunkPosition.x][chunkPosition.y][chunkPosition.z];
+		chunks[chunkPosition] = MakeShared<Chunk>(chunkPosition);
+		return chunks[chunkPosition];
 	}
 
 	return nullptr;
@@ -50,5 +77,5 @@ bool ChunkRegion::IsInsideRegion(glm::vec3& inPosition) const
 
 SharedPtr<Chunk> ChunkRegion::GetChunk(glm::ivec3& chunkPosition)
 {
-	return chunks[chunkPosition.x][chunkPosition.y][chunkPosition.z];
+	return chunks[chunkPosition];
 }

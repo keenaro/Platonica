@@ -63,7 +63,9 @@ Window::Window()
 		exit(EXIT_FAILURE);
 	}
 
+
 	glfwMakeContextCurrent(window);
+	//glfwSwapInterval(0);
 	gladLoadGL();
 
 	glEnable(GL_CULL_FACE);

@@ -32,5 +32,9 @@ void AsyncChunkManager::DoWork()
 			requestingTask.unlock();
 			currentChunkTask->GenerateChunkData();
 		}
+		else
+		{
+			Sleep(10);
+		}
 	}
 }

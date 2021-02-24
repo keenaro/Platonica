@@ -1,6 +1,10 @@
 #pragma once
 #include <memory>
 #include <map>
+#include <unordered_map>
+#define GLM_ENABLE_EXPERIMENTAL
+#include "glm/gtx/hash.hpp"
+#include "glm/ext.hpp"
 
 #if _DEBUG
 #define DPrint(x) (puts(x))
@@ -16,6 +20,26 @@ using SharedPtr = std::shared_ptr<T>;
 #define MakeShared std::make_shared
 
 template<class T>
-using SharedMap3 = std::map<int, std::map<int, std::map<int, SharedPtr<T>>>>;
+using SharedIVec3Map = std::unordered_map<glm::ivec3, SharedPtr<T>>;
 
-#define IterateMap3(M3) for (auto const& M3X : M3) for (auto const& M3Y : M3X.second) for (auto mapIt : M3Y.second)
+
+
+#include <cmath>
+#include <string>
+#include <chrono>
+#include <iostream>
+
+class AutoProfiler {
+public:
+	AutoProfiler(std::string name)
+		: m_name(std::move(name)),
+		m_beg(std::chrono::high_resolution_clock::now()) { }
+	~AutoProfiler() {
+		auto end = std::chrono::high_resolution_clock::now();
+		auto dur = std::chrono::duration_cast<std::chrono::microseconds>(end - m_beg);
+		std::cout << m_name << " : " << dur.count() << " musec\n";
+	}
+private:
+	std::string m_name;
+	std::chrono::time_point<std::chrono::high_resolution_clock> m_beg;
+};

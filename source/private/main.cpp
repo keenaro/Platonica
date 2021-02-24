@@ -9,6 +9,6 @@ int main()
     Window& window = Window::Instance();
 	CubeDefs& cubeDefs = CubeDefs::Instance();
 	World& world = World::Instance();
-
+	
 	window.WindowLoop();
 }

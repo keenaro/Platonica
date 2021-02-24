@@ -4,6 +4,7 @@
 #include "Defs.h"
 #include "AsyncChunkManager.h"
 #include "PerlinNoise.h"
+#include "Chunk.h"
 
 class ChunkRegion;
 class Player;
@@ -22,6 +23,8 @@ public:
 
 public:
 	int GetRegionLength() const { return regionLength; };
+	int GetRenderDistance() const { return renderDistance * CHUNK_LENGTH; };
+	int GetOffloadDistance() const { return GetRenderDistance() + CHUNK_LENGTH; }
 
 	void Update(float deltaTime) override;
 	void Draw() override;
@@ -33,24 +36,17 @@ public:
 	AsyncChunkManager chunkManager;
 	PerlinNoise perlin;
 
-	bool TryIncrementChunkGenBufferCount();
-
 private:
 	void LoadTextureAtlas();
 	void TryRequestChunks();
 
 private:
 	int regionLength;
-	SharedMap3<ChunkRegion> regions;
+	SharedIVec3Map<ChunkRegion> regions;
 	SharedPtr<Player> player;
-	std::vector<glm::ivec3> chunkPositionsInRange;
 
-
-//Optimisations
 private:
 	const int renderDistance = 10;
-	const int maxChunkBufferGensPerTick = 100;
-	int currentChunkBufferCount = 0;
 
 public:
 	World(World const&) = delete;

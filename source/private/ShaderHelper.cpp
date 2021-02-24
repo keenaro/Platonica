@@ -5,6 +5,7 @@
 #include "Defs.h"
 
 std::map<std::size_t, SharedPtr<Shader>> ShaderLibrary::shaderMap;
+SharedPtr<Shader> ShaderLibrary::currentlyBindedShader = nullptr;
 
 bool ShaderLibrary::LoadShader(std::string& shaderName)
 {

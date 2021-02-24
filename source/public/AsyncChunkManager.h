@@ -17,7 +17,6 @@ public:
 public:
 	void RequestTask(SharedPtr<class Chunk> chunk);
 	void Start();
-	void DoTask();
 private:
 	void DoWork();
 

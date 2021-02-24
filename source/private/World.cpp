@@ -17,42 +17,51 @@ World::World(int inRegionLength) : RenderObject(true), UpdateObject(true)
 
 void World::Draw() 
 {
-	currentChunkBufferCount = 0;
-
 	RenderObject::Draw();
-	IterateMap3(regions)
+	for (auto& it : regions)
 	{
-		if (SharedPtr<ChunkRegion> region = mapIt.second)
+		if (SharedPtr<ChunkRegion> region = it.second)
 		{
 			region->Draw();
-		}	
+		}
 	}
 }
 
 void World::Update(float deltaTime)
 {
+	for (auto& it : regions)
+	{
+		if (SharedPtr<ChunkRegion> region = it.second)
+		{
+			region->Update(deltaTime);
+		}
+	}
 	player->Update(deltaTime);
 	TryRequestChunks();	
 }
 
 void World::TryRequestChunks()
 {
-	const glm::ivec3 playerPositionChunkSpace = player->GetPosition() * (1.f / CHUNK_LENGTH);
-	std::vector<glm::ivec3> newChunkPositionsInRange;
-	for (int z = -renderDistance; z < renderDistance; z++)
+	const glm::ivec3 playerPositionChunkSpace = player->GetPosition() / CHUNK_LENGTH;
+	const int renderRadius = renderDistance / 2;
+	for (int z = -renderRadius; z < renderRadius; z++)
 	{
-		for (int y = -renderDistance; y < renderDistance; y++)
+		for (int y = -renderRadius; y < renderRadius; y++)
 		{
-			for (int x = -renderDistance; x < renderDistance; x++)
+			for (int x = -renderRadius; x < renderRadius; x++)
 			{
 				glm::ivec3& chunkPosition = playerPositionChunkSpace + glm::ivec3(x, y, z);
 				glm::ivec3& regionPosition = glm::ivec3(0, 0, 0); // HARD CODED FIX PLS
 
-				const SharedPtr<ChunkRegion> region = GetOrCreateRegion(regionPosition);
-				SharedPtr<Chunk> chunk = region->TryCreateChunk(chunkPosition);
-				if (chunk)
+				if (glm::distance(glm::vec3(playerPositionChunkSpace), glm::vec3(regionPosition * regionLength + chunkPosition)) < GetOffloadDistance())
 				{
-					chunkManager.RequestTask(chunk);
+					const SharedPtr<ChunkRegion> region = GetOrCreateRegion(regionPosition);
+					SharedPtr<Chunk> chunk = region->TryCreateChunk(chunkPosition);
+					if (chunk)
+					{
+						DPrintf("Requesting chunk %s\n", glm::to_string(chunkPosition).c_str());
+						chunkManager.RequestTask(chunk);
+					}
 				}
 			}
 		}
@@ -61,13 +70,13 @@ void World::TryRequestChunks()
 
 SharedPtr<ChunkRegion> World::GetOrCreateRegion(glm::ivec3& pos)
 {
-	if (!regions[pos.x][pos.y][pos.z])
+	if (!regions[pos])
 	{
 		SharedPtr<ChunkRegion> region = MakeShared<ChunkRegion>(pos);
-		regions[pos.x][pos.y][pos.z] = region;
+		regions[pos] = region;
 	}
 
-	return regions[pos.x][pos.y][pos.z];
+	return regions[pos];
 }
 
 void World::SetShaderUniformValues()
@@ -100,11 +109,4 @@ void World::LoadTextureAtlas()
 		DPrint("Failed to load texture");
 	}
 	stbi_image_free(data);
-}
-
-bool World::TryIncrementChunkGenBufferCount()
-{
-	const bool shouldIncrement = currentChunkBufferCount < maxChunkBufferGensPerTick;
-	currentChunkBufferCount += shouldIncrement;
-	return currentChunkBufferCount < maxChunkBufferGensPerTick;
 }

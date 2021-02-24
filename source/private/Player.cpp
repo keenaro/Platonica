@@ -64,3 +64,8 @@ void Player::ProcessJoystick(float deltaTime)
 		}
 	}	
 }
+
+bool Player::IsChunkInFrustrum(SharedPtr<Chunk> chunk) const
+{
+	return true;
+}

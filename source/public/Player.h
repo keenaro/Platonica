@@ -12,6 +12,8 @@ public:
 	void Update(float deltaTime) override;
 	const glm::vec3& GetMovementSpeed() const { return movementSpeed; };
 	const glm::vec3& GetRotationSpeed() const { return rotationSpeed; };
+	bool IsChunkInFrustrum(SharedPtr<class Chunk>) const;
+
 
 private:
 	void ProcessJoystick(float deltaTime);

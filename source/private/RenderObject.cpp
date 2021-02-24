@@ -17,7 +17,10 @@ RenderObject::~RenderObject()
 
 void RenderObject::Draw()
 {
-	shader->Use();
+	if (!ShaderLibrary::IsShaderCurrentlyBinded(shader))
+	{
+		shader->Use();
+	}
 	SetShaderUniformValues();
 }
 
