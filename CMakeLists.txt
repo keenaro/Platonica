@@ -27,9 +27,10 @@ include_directories(source/public/
                     externals/glad/include/
                     externals/glfw/include/
                     externals/glm/
-                    externals/stb/)
+                    externals/stb/
+					externals/imgui/)
 
-file(GLOB EXTERNALS_SOURCES externals/glad/src/glad.c)
+file(GLOB EXTERNALS_SOURCES externals/glad/src/glad.c externals/imgui/*.cpp)
 file(GLOB PROJECT_HEADERS source/public/*.h)
 file(GLOB PROJECT_SOURCES source/private/*.cpp)
 file(GLOB PROJECT_SHADERS resources/shaders/*.comp

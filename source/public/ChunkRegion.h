@@ -11,7 +11,6 @@ public:
 
 	void Draw() override;
 	void Update(float deltaTime) override;
-	void SetShaderUniformValues() override;
 
 	SharedPtr<Chunk> TryCreateChunk(const glm::ivec3& chunkPosition);
 	void InsertChunk(SharedPtr<Chunk> chunk);
@@ -27,7 +26,7 @@ public:
 private:
 	void RemoveOutOfDistanceChunks();
 	void DrawChunks() const;
-
+	void SetShaderUniformValues() override;
 
 private:
 	SharedIVec3Map<Chunk> chunks;

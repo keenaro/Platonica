@@ -38,6 +38,7 @@ void World::Update(float deltaTime)
 	UpdateRegions(deltaTime);
 	player->Update(deltaTime);
 	TryRequestChunks();	
+	UpdateGUI();
 }
 
 void World::UpdateRegions(float deltaTime) const
@@ -122,6 +123,7 @@ void World::SetShaderUniformValues()
 	shader->SetVector3("CameraPosition", player->GetPosition());
 	shader->SetMatrix4("ViewWorldXform", viewWorldXform);
 	shader->SetMatrix4("ProjectionXform", player->GetProjectionXForm());
+	shader->SetFloat("SphericalWorldFalloff", sphericalFalloff);
 }
 
 int World::TranslateIntoWrappedWorld(int value)
@@ -133,4 +135,17 @@ int World::TranslateIntoWrappedWorld(int value)
 glm::ivec3 World::TranslateIntoWrappedWorld(const glm::ivec3& vec3ToTranslate)
 {
 	return glm::ivec3(TranslateIntoWrappedWorld(vec3ToTranslate.x), vec3ToTranslate.y, TranslateIntoWrappedWorld(vec3ToTranslate.z));
+}
+
+void World::UpdateGUI()
+{
+	ImGui::Begin("World");
+
+	const glm::vec3 playerAbsolutePostion = player->GetPosition();
+	ImGui::Text("Player Absolute Position: %s", glm::to_string(playerAbsolutePostion).c_str());
+	ImGui::Text("Player Wrapped Position: %s", glm::to_string(TranslateIntoWrappedWorld(playerAbsolutePostion/regionLength)*regionLength).c_str());
+	ImGui::PushItemWidth(100);
+	ImGui::SliderFloat("World Spherical Falloff", &sphericalFalloff, 0.0f, 0.5f);
+
+	ImGui::End();
 }

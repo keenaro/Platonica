@@ -23,9 +23,16 @@ public:
 
 	float GetAspectRatio() const { return (float)dimensions.x / dimensions.y; };
 
+	void SetVSyncEnabled(bool enabled) { enableVsync = enabled;  glfwSwapInterval(enableVsync ? 1 : 0); };
+
+private:
+	void UpdateGUI();
+	void SetWireframeEnabled(bool enabled);
+
 private:
 	Window();
 	glm::ivec2 dimensions;
+	bool enableVsync = true;
 
 private:
 	struct GLFWwindow* window = nullptr;

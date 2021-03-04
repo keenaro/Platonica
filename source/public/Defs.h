@@ -3,6 +3,9 @@
 #include <memory>
 #include <map>
 #include <unordered_map>
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/hash.hpp"

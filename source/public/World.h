@@ -28,7 +28,6 @@ public:
 
 	void Update(float deltaTime) override;
 	void Draw() override;
-	void SetShaderUniformValues() override;
 
 	SharedPtr<Player> GetPlayer() const { return player; };
 	SharedPtr<ChunkRegion> GetOrCreateRegion(const glm::ivec3& pos);
@@ -39,6 +38,7 @@ public:
 private:
 	void DrawRegions() const;
 	void UpdateRegions(float deltaTime) const;
+	void SetShaderUniformValues() override;
 
 	void TryRequestChunks();
 	SharedPtr<Chunk> GetChunk(const glm::ivec3& chunkPosition) const;
@@ -46,6 +46,7 @@ private:
 	int TranslateIntoWrappedWorld(int value);
 	glm::ivec3 TranslateIntoWrappedWorld(const glm::ivec3& vec3ToTranslate);
 
+	void UpdateGUI();
 private:
 	int regionLength;
 	SharedIVec3Map<ChunkRegion> regions;
@@ -53,6 +54,7 @@ private:
 
 private:
 	const int renderDistance = 8;
+	float sphericalFalloff = 0.05f;
 
 public:
 	World(World const&) = delete;

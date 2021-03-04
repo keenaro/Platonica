@@ -20,6 +20,10 @@ void Window::WindowLoop()
 		deltaTime = glfwGetTime() - preTime;
 		preTime = glfwGetTime();
 
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
 		for(UpdateObject* object : objectsToUpdate)
 		{
 			if(object->ShouldUpdate())
@@ -27,6 +31,8 @@ void Window::WindowLoop()
 				object->Update(deltaTime);
 			}
 		}
+
+		UpdateGUI();
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -39,9 +45,16 @@ void Window::WindowLoop()
 			}
 		}
 
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
+
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
 
 	glfwTerminate();
 	exit(EXIT_SUCCESS);
@@ -65,11 +78,18 @@ Window::Window()
 
 
 	glfwMakeContextCurrent(window);
-	//glfwSwapInterval(0);
+	SetVSyncEnabled(enableVsync);
 	gladLoadGL();
 
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
+
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init("#version 130");
+	ImGui::StyleColorsDark();
 }
 
 void Window::StartRenderingObject(RenderObject* object)
@@ -114,4 +134,28 @@ void Window::StopUpdatingObject(UpdateObject* object)
 	{
 		objectsToUpdate.erase(position);
 	}
+}
+
+void Window::SetWireframeEnabled(bool enabled) 
+{ 
+	glPolygonMode(GL_FRONT_AND_BACK, enabled ? GL_LINE : GL_FILL);
+}
+
+
+void Window::UpdateGUI()
+{
+	ImGui::Begin("Window");
+
+	bool vsyncEnabled = enableVsync;
+	int polygonMode;
+	glGetIntegerv(GL_POLYGON_MODE, &polygonMode);
+	bool wireframeEnabled = polygonMode == GL_LINE;
+
+	if (ImGui::Checkbox("VSync", &vsyncEnabled))
+		SetVSyncEnabled(vsyncEnabled);
+	if (ImGui::Checkbox("Wireframe", &wireframeEnabled))
+		SetWireframeEnabled(wireframeEnabled);
+			
+	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+	ImGui::End();
 }
