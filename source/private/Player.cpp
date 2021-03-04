@@ -5,7 +5,8 @@ Player::Player(Camera& camera) : Camera(camera), UpdateObject(false)
 {
 	movementSpeed = glm::vec3(2.f, 2.f, 2.f);
 	rotationSpeed = glm::vec3(1.5f, 1.5f, 1.5f);
-	position = glm::vec3(0.0f, 0.0f, -10.f);
+	position = glm::vec3(2.2f, 32.1f, 2.2f);
+	rotation = glm::vec3(45.0f, 0.0f, 45.0f);
 }
 
 void Player::Rotate(glm::vec3& rotate)

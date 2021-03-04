@@ -15,6 +15,7 @@ public:
 
 protected:
 	virtual void SetShaderUniformValues() {};
+	void LoadTexture(const std::string& textureName, int textureNum = 0);
 
 protected:
 	SharedPtr<Shader> shader;

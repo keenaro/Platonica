@@ -19,7 +19,7 @@ public:
 	}
 
 public:
-	World(int inRegionLength = 32);
+	World(int inRegionLength = 4);
 
 public:
 	int GetRegionLength() const { return regionLength; };
@@ -31,14 +31,20 @@ public:
 	void SetShaderUniformValues() override;
 
 	SharedPtr<Player> GetPlayer() const { return player; };
-	SharedPtr<ChunkRegion> GetOrCreateRegion(glm::ivec3& pos);
+	SharedPtr<ChunkRegion> GetOrCreateRegion(const glm::ivec3& pos);
 
 	AsyncChunkManager chunkManager;
-	PerlinNoise perlin;
+	SharedPtr<PerlinNoise> perlin;
 
 private:
-	void LoadTextureAtlas();
+	void DrawRegions() const;
+	void UpdateRegions(float deltaTime) const;
+
 	void TryRequestChunks();
+	SharedPtr<Chunk> GetChunk(const glm::ivec3& chunkPosition) const;
+
+	int TranslateIntoWrappedWorld(int value);
+	glm::ivec3 TranslateIntoWrappedWorld(const glm::ivec3& vec3ToTranslate);
 
 private:
 	int regionLength;
@@ -46,7 +52,7 @@ private:
 	SharedPtr<Player> player;
 
 private:
-	const int renderDistance = 10;
+	const int renderDistance = 8;
 
 public:
 	World(World const&) = delete;

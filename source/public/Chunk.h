@@ -8,7 +8,7 @@
 class Chunk : public VertexRenderObject, public Position<glm::ivec3>
 {
 public:
-	Chunk(glm::ivec3& inPosition);
+	Chunk(const glm::ivec3& inPosition);
 
 public:
 	bool IsInsideChunk(const glm::vec3& position) const;
@@ -17,6 +17,9 @@ public:
 
 	void GenerateChunkData();
 	glm::ivec3 GetWorldPosition() const { return position * CHUNK_LENGTH; };
+	glm::ivec3 GetWorldCentrePosition() const { return position * CHUNK_LENGTH + glm::ivec3(CHUNK_LENGTH / 2); }
+
+	bool IsLoaded() const { return loaded; };
 
 private:
 	void GenerateBuffers();

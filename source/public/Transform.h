@@ -5,11 +5,11 @@ template<class T>
 class Position
 {
 public:
-	Position(T& inPosition = T(0)) { SetPosition(inPosition); };
+	Position(const T& inPosition = T(0)) { SetPosition(inPosition); };
 
 public:
 	T& GetPosition() { return position; };
-	void SetPosition(T& inPosition) { position = inPosition; };
+	void SetPosition(const T& inPosition) { position = inPosition; };
 	void Move(glm::vec3 movement) { position += movement; };
 
 protected:

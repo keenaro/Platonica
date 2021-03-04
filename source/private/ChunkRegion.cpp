@@ -2,7 +2,7 @@
 #include "World.h"
 #include "Player.h"
 
-ChunkRegion::ChunkRegion(glm::ivec3& inPosition) : RenderObject(false), Position(inPosition), UpdateObject(false)
+ChunkRegion::ChunkRegion(const glm::ivec3& inPosition) : RenderObject(false), Position(inPosition), UpdateObject(false)
 {
 	position = inPosition;
 	shader = World::Instance().GetShader();
@@ -11,7 +11,11 @@ ChunkRegion::ChunkRegion(glm::ivec3& inPosition) : RenderObject(false), Position
 void ChunkRegion::Draw()
 {
 	RenderObject::Draw();
+	DrawChunks();
+}
 
+void ChunkRegion::DrawChunks() const
+{
 	const glm::ivec3& regionWorldPosition = GetWorldPosition();
 
 	for (auto& it : chunks)
@@ -29,6 +33,11 @@ void ChunkRegion::Draw()
 void ChunkRegion::Update(float deltaTime)
 {
 	RemoveOutOfDistanceChunks();
+}
+
+glm::ivec3 ChunkRegion::GetWorldPosition() const 
+{ 
+	return position * World::Instance().GetRegionLength() * CHUNK_LENGTH;
 }
 
 void ChunkRegion::RemoveOutOfDistanceChunks()
@@ -50,7 +59,7 @@ void ChunkRegion::RemoveOutOfDistanceChunks()
 	}
 }
 
-SharedPtr<Chunk> ChunkRegion::TryCreateChunk(glm::ivec3& chunkPosition)
+SharedPtr<Chunk> ChunkRegion::TryCreateChunk(const glm::ivec3& chunkPosition)
 {
 	if (!chunks[chunkPosition])
 	{
@@ -61,11 +70,15 @@ SharedPtr<Chunk> ChunkRegion::TryCreateChunk(glm::ivec3& chunkPosition)
 	return nullptr;
 }
 
-void ChunkRegion::SetShaderUniformValues()
+void ChunkRegion::InsertChunk(SharedPtr<Chunk> chunk)
 {
-	shader->SetIVector3("RegionPosition", position);
+	chunks[chunk->GetPosition()] = chunk;
 }
 
+void ChunkRegion::SetShaderUniformValues()
+{
+	shader->SetIVector3("RegionPosition", GetWorldPosition());
+}
 
 bool ChunkRegion::IsInsideRegion(glm::vec3& inPosition) const
 {
@@ -75,7 +88,7 @@ bool ChunkRegion::IsInsideRegion(glm::vec3& inPosition) const
 			inPosition.z > position.z && inPosition.z < position.z + regionLength * CHUNK_LENGTH);
 }
 
-SharedPtr<Chunk> ChunkRegion::GetChunk(glm::ivec3& chunkPosition)
+SharedPtr<Chunk> ChunkRegion::GetChunk(const glm::ivec3& chunkPosition)
 {
 	return chunks[chunkPosition];
 }

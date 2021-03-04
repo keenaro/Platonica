@@ -5,7 +5,7 @@
 #include "Player.h"
 #include "Defs.h"
 
-Chunk::Chunk(glm::ivec3& inPosition) : VertexRenderObject(false), Position(inPosition)
+Chunk::Chunk(const glm::ivec3& inPosition) : VertexRenderObject(false), Position(inPosition)
 {
 	position = inPosition;
 	dirty = true;
@@ -19,9 +19,10 @@ bool Chunk::ShouldDraw(const glm::ivec3& chunkRegionWorldPosition) const
 	const SharedPtr<Player> player = world.GetPlayer();
 	const glm::vec3& cameraPosition = player->GetPosition();
 	const glm::vec3& cameraDirection = player->GetDirection();
-	const glm::vec3& chunkWorldPosition = GetWorldPosition() + chunkRegionWorldPosition;
+	const glm::vec3& chunkWorldPosition = GetWorldCentrePosition() + chunkRegionWorldPosition;
+	const glm::vec3& infrontOffset = cameraDirection * CHUNK_LENGTH;
 
-	const bool IsInfront = glm::fastNormalizeDot(chunkWorldPosition - cameraPosition + cameraDirection * CHUNK_LENGTH, cameraDirection) > 0.25f;
+	const bool IsInfront = glm::fastNormalizeDot(chunkWorldPosition - cameraPosition + infrontOffset, cameraDirection) > 0.5f;
 	const bool IsWithinRenderDistance = glm::distance(cameraPosition, chunkWorldPosition) < renderDistance;
 
 	return loaded && (dirty || VertexRenderObject::ShouldDraw()) && IsInfront && IsWithinRenderDistance;
@@ -39,7 +40,7 @@ void Chunk::Draw()
 
 void Chunk::SetShaderUniformValues()
 {
-	shader->SetIVector3("ChunkPosition", position*CHUNK_LENGTH);
+	shader->SetIVector3("ChunkPosition", GetWorldPosition());
 }
 
 void Chunk::GenerateBuffers()
@@ -241,27 +242,30 @@ void Chunk::GenerateChunkData()
 			const unsigned int baseHeight = 10;
 			const float inclineMultiplier = 50.0f;
 
-			const float pNoise = world.perlin.PNoise(glm::vec3(float(x + WSChunkPosition.x) / frequency, float(z + WSChunkPosition.z) / frequency, 0.0f), glm::ivec3(regionLength, regionLength, 1.0f));
-
-			const int noise = pNoise * inclineMultiplier + baseHeight;
-
-			for (int y = 0; y < CHUNK_LENGTH; y++)
+			if (const SharedPtr<PerlinNoise> perlinGenerator = world.perlin)
 			{
-				const int caveFreq = 16;
-				const float caveInclineMultiplier = position.y;
-				const int caveThreshold = 1;
-				const float testNoise = world.perlin.PNoise(glm::vec3(float(x + WSChunkPosition.x) / caveFreq, float(z + WSChunkPosition.z) / caveFreq, float(y + WSChunkPosition.y) / caveFreq), glm::ivec3(regionLength, regionLength, 10000.0f));
-				const int tnoise = testNoise * caveInclineMultiplier;
+				const float pNoise = perlinGenerator->PNoise(glm::vec3(float(x + WSChunkPosition.x) / frequency, float(z + WSChunkPosition.z) / frequency, 0.0f), glm::ivec3(regionLength, regionLength, 1.0f));
 
-				CubeID id = Air;
-				if (WSChunkPosition.y + y < noise)
+				const int noise = pNoise * inclineMultiplier + baseHeight;
+
+				for (int y = 0; y < CHUNK_LENGTH; y++)
 				{
-					id = WSChunkPosition.y + y + 1 == noise ? Grass : WSChunkPosition.y + y + 5 > noise ? Dirt : Stone;
+					const int caveFreq = 16;
+					const float caveInclineMultiplier = position.y;
+					const int caveThreshold = 1;
+					const float testNoise = perlinGenerator->PNoise(glm::vec3(float(x + WSChunkPosition.x) / caveFreq, float(z + WSChunkPosition.z) / caveFreq, float(y + WSChunkPosition.y) / caveFreq), glm::ivec3(regionLength, regionLength, 10000.0f));
+					const int tnoise = testNoise * caveInclineMultiplier;
 
-					if (WSChunkPosition.y + y < noise-5 && tnoise > caveThreshold) id = Air;
+					CubeID id = Air;
+					if (WSChunkPosition.y + y < noise)
+					{
+						id = WSChunkPosition.y + y + 1 == noise ? Grass : WSChunkPosition.y + y + 5 > noise ? Dirt : Stone;
+
+						if (WSChunkPosition.y + y < noise - 5 && tnoise > caveThreshold) id = Air;
+					}
+
+					data[x][y][z].SetID(id);
 				}
-
-				data[x][y][z].SetID(id);
 			}
 		}
 	}

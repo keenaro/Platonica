@@ -3,21 +3,27 @@
 #include "Player.h"
 #include <algorithm>
 #include "PerlinNoise.h"
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include "Defs.h"
+#include "MathFunctions.h"
 
 World::World(int inRegionLength) : RenderObject(true), UpdateObject(true)
 {
 	regionLength = inRegionLength;
 	shader = ShaderLibrary::GetShader(std::string("WorldCubes"));
 	player = MakeShared<Player>();
-	LoadTextureAtlas();
+	perlin = MakeShared<PerlinNoise>();
+	LoadTexture("textures/atlas.png");
 	chunkManager.Start();
 }
 
 void World::Draw() 
 {
 	RenderObject::Draw();
+	DrawRegions();
+}
+
+void World::DrawRegions() const
+{
 	for (auto& it : regions)
 	{
 		if (SharedPtr<ChunkRegion> region = it.second)
@@ -29,6 +35,13 @@ void World::Draw()
 
 void World::Update(float deltaTime)
 {
+	UpdateRegions(deltaTime);
+	player->Update(deltaTime);
+	TryRequestChunks();	
+}
+
+void World::UpdateRegions(float deltaTime) const
+{
 	for (auto& it : regions)
 	{
 		if (SharedPtr<ChunkRegion> region = it.second)
@@ -36,13 +49,13 @@ void World::Update(float deltaTime)
 			region->Update(deltaTime);
 		}
 	}
-	player->Update(deltaTime);
-	TryRequestChunks();	
 }
 
 void World::TryRequestChunks()
 {
-	const glm::ivec3 playerPositionChunkSpace = player->GetPosition() / CHUNK_LENGTH;
+	const glm::ivec3& playerWorldPosition = player->GetPosition();
+	const glm::ivec3& playerChunkPosition = playerWorldPosition / CHUNK_LENGTH;
+
 	const int renderRadius = renderDistance / 2;
 	for (int z = -renderRadius; z < renderRadius; z++)
 	{
@@ -50,17 +63,26 @@ void World::TryRequestChunks()
 		{
 			for (int x = -renderRadius; x < renderRadius; x++)
 			{
-				glm::ivec3& chunkPosition = playerPositionChunkSpace + glm::ivec3(x, y, z);
-				glm::ivec3& regionPosition = glm::ivec3(0, 0, 0); // HARD CODED FIX PLS
+				const glm::ivec3& unwrappedChunkPositionChunkSpace = playerChunkPosition + glm::ivec3(x, y, z);
+				const glm::ivec3& chunkPositionChunkSpace = TranslateIntoWrappedWorld(unwrappedChunkPositionChunkSpace);
+				const glm::ivec3& regionPositionChunkSpace = RoundDownToMultiple(unwrappedChunkPositionChunkSpace, regionLength * CHUNK_LENGTH) * glm::ivec3(1,0,1);
+				const glm::vec3& chunkPositionWorldSpace = (regionPositionChunkSpace + chunkPositionChunkSpace) * CHUNK_LENGTH;
 
-				if (glm::distance(glm::vec3(playerPositionChunkSpace), glm::vec3(regionPosition * regionLength + chunkPosition)) < GetOffloadDistance())
+				if (glm::distance(glm::vec3(playerWorldPosition), chunkPositionWorldSpace) < GetOffloadDistance())
 				{
-					const SharedPtr<ChunkRegion> region = GetOrCreateRegion(regionPosition);
-					SharedPtr<Chunk> chunk = region->TryCreateChunk(chunkPosition);
-					if (chunk)
+					const glm::ivec3& regionPositionRegionSpace = regionPositionChunkSpace / regionLength;
+					const SharedPtr<ChunkRegion> region = GetOrCreateRegion(regionPositionRegionSpace);
+					if (!region->GetChunk(chunkPositionChunkSpace))
 					{
-						DPrintf("Requesting chunk %s\n", glm::to_string(chunkPosition).c_str());
-						chunkManager.RequestTask(chunk);
+						SharedPtr<Chunk> chunk = GetChunk(chunkPositionChunkSpace);
+						if (!chunk)
+						{
+							DPrintf("Requesting chunk %s\n", glm::to_string(chunkPositionChunkSpace).c_str());
+							chunk = MakeShared<Chunk>(chunkPositionChunkSpace);
+							chunkManager.RequestTask(chunk);
+						}
+
+						region->InsertChunk(chunk);
 					}
 				}
 			}
@@ -68,7 +90,20 @@ void World::TryRequestChunks()
 	}
 }
 
-SharedPtr<ChunkRegion> World::GetOrCreateRegion(glm::ivec3& pos)
+SharedPtr<Chunk> World::GetChunk(const glm::ivec3& chunkPosition) const
+{
+	for(auto& region : regions)
+	{
+		if(SharedPtr<Chunk> chunk = region.second->GetChunk(chunkPosition))
+		{
+			return chunk;
+		}
+	}
+
+	return nullptr;
+}
+
+SharedPtr<ChunkRegion> World::GetOrCreateRegion(const glm::ivec3& pos)
 {
 	if (!regions[pos])
 	{
@@ -89,24 +124,13 @@ void World::SetShaderUniformValues()
 	shader->SetMatrix4("ProjectionXform", player->GetProjectionXForm());
 }
 
-void World::LoadTextureAtlas()
+int World::TranslateIntoWrappedWorld(int value)
 {
-	unsigned int texture;
-	glGenTextures(0, &texture);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	int width, height, nrChannels;
-	unsigned char* data = stbi_load("textures/atlas.png", &width, &height, &nrChannels, 0);
-	if (data)
-	{
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-		glGenerateMipmap(GL_TEXTURE_2D);
-	}
-	else
-	{
-		DPrint("Failed to load texture");
-	}
-	stbi_image_free(data);
+	const int regionWorldLength = regionLength * CHUNK_LENGTH;
+	return (value + regionWorldLength * (abs(value / regionWorldLength) + 1)) % regionWorldLength;
+}
+
+glm::ivec3 World::TranslateIntoWrappedWorld(const glm::ivec3& vec3ToTranslate)
+{
+	return glm::ivec3(TranslateIntoWrappedWorld(vec3ToTranslate.x), vec3ToTranslate.y, TranslateIntoWrappedWorld(vec3ToTranslate.z));
 }

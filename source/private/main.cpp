@@ -1,3 +1,4 @@
+#define STB_IMAGE_IMPLEMENTATION
 #include "Window.h"
 #include "TestObjects.h"
 #include "CubeDefs.h"
