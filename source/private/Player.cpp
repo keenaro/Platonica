@@ -19,6 +19,7 @@ void Player::Rotate(glm::vec3& rotate)
 void Player::Update(float deltaTime)
 {
 	ProcessJoystick(deltaTime);
+	UpdateGUI();
 }
 
 void Player::ProcessJoystick(float deltaTime)
@@ -40,7 +41,7 @@ void Player::ProcessJoystick(float deltaTime)
 		}
 		if (buttons[GLFW_GAMEPAD_BUTTON_LEFT_BUMPER] == GLFW_PRESS)
 		{
-			speedIncrease = 10.0f;
+			speedIncrease = speedIncreaseMulitplier;
 		}
 	}
 
@@ -66,7 +67,12 @@ void Player::ProcessJoystick(float deltaTime)
 	}	
 }
 
-bool Player::IsChunkInFrustrum(SharedPtr<Chunk> chunk) const
+void Player::UpdateGUI()
 {
-	return true;
+	ImGui::Begin("Player");
+
+	ImGui::PushItemWidth(100);
+	ImGui::SliderFloat("Speed Increase Multiplier", &speedIncreaseMulitplier, 10.0f, 100.0f);
+
+	ImGui::End();
 }

@@ -12,7 +12,6 @@ public:
 	void Draw() override;
 	void Update(float deltaTime) override;
 
-	SharedPtr<Chunk> TryCreateChunk(const glm::ivec3& chunkPosition);
 	void InsertChunk(SharedPtr<Chunk> chunk);
 
 	bool IsInsideRegion(glm::vec3& inPosition) const;
@@ -22,6 +21,8 @@ public:
 
 	glm::ivec3 GetWorldPosition() const;
 	glm::ivec3 GetChunkWorldPosition(SharedPtr<Chunk> chunk) const { return chunk->GetWorldPosition() + GetWorldPosition(); }
+
+	int GetChunkCount() const { return chunks.size(); }
 
 private:
 	void RemoveOutOfDistanceChunks();

@@ -48,7 +48,7 @@ void ChunkRegion::RemoveOutOfDistanceChunks()
 
 	for (auto& it = chunks.cbegin(); it != chunks.cend();)
 	{
-		if (it->second && glm::distance(glm::vec3(GetChunkWorldPosition(it->second)), playerPos) > offloadDistance)
+		if (!it->second || glm::distance(glm::vec3(GetChunkWorldPosition(it->second)), playerPos) > offloadDistance)
 		{
 			chunks.erase(it++);
 		}
@@ -57,17 +57,6 @@ void ChunkRegion::RemoveOutOfDistanceChunks()
 			++it;
 		}
 	}
-}
-
-SharedPtr<Chunk> ChunkRegion::TryCreateChunk(const glm::ivec3& chunkPosition)
-{
-	if (!chunks[chunkPosition])
-	{
-		chunks[chunkPosition] = MakeShared<Chunk>(chunkPosition);
-		return chunks[chunkPosition];
-	}
-
-	return nullptr;
 }
 
 void ChunkRegion::InsertChunk(SharedPtr<Chunk> chunk)

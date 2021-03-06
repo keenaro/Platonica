@@ -7,7 +7,6 @@
 
 Chunk::Chunk(const glm::ivec3& inPosition) : VertexRenderObject(false), Position(inPosition)
 {
-	position = inPosition;
 	dirty = true;
 	shader = World::Instance().GetShader();
 }
@@ -22,7 +21,7 @@ bool Chunk::ShouldDraw(const glm::ivec3& chunkRegionWorldPosition) const
 	const glm::vec3& chunkWorldPosition = GetWorldCentrePosition() + chunkRegionWorldPosition;
 	const glm::vec3& infrontOffset = cameraDirection * CHUNK_LENGTH;
 
-	const bool IsInfront = glm::fastNormalizeDot(chunkWorldPosition - cameraPosition + infrontOffset, cameraDirection) > 0.5f;
+	const bool IsInfront = glm::fastNormalizeDot(chunkWorldPosition - cameraPosition + infrontOffset, cameraDirection) > 0.25f;
 	const bool IsWithinRenderDistance = glm::distance(cameraPosition, chunkWorldPosition) < renderDistance;
 
 	return loaded && (dirty || VertexRenderObject::ShouldDraw()) && IsInfront && IsWithinRenderDistance;

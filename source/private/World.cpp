@@ -41,16 +41,23 @@ void World::Update(float deltaTime)
 	UpdateGUI();
 }
 
-void World::UpdateRegions(float deltaTime) const
+void World::UpdateRegions(float deltaTime)
 {
-	for (auto& it : regions)
+	for (auto& it = regions.cbegin(); it != regions.cend();)
 	{
-		if (SharedPtr<ChunkRegion> region = it.second)
+		SharedPtr<ChunkRegion> region = it->second;
+		if (!region || !region->GetChunkCount())
+		{
+			regions.erase(it++);
+		}
+		else
 		{
 			region->Update(deltaTime);
+			++it;
 		}
 	}
 }
+
 
 void World::TryRequestChunks()
 {
@@ -126,13 +133,13 @@ void World::SetShaderUniformValues()
 	shader->SetFloat("SphericalWorldFalloff", sphericalFalloff);
 }
 
-int World::TranslateIntoWrappedWorld(int value)
+int World::TranslateIntoWrappedWorld(int value) const
 {
 	const int regionWorldLength = regionLength * CHUNK_LENGTH;
 	return (value + regionWorldLength * (abs(value / regionWorldLength) + 1)) % regionWorldLength;
 }
 
-glm::ivec3 World::TranslateIntoWrappedWorld(const glm::ivec3& vec3ToTranslate)
+glm::ivec3 World::TranslateIntoWrappedWorld(const glm::ivec3& vec3ToTranslate) const
 {
 	return glm::ivec3(TranslateIntoWrappedWorld(vec3ToTranslate.x), vec3ToTranslate.y, TranslateIntoWrappedWorld(vec3ToTranslate.z));
 }
@@ -146,6 +153,17 @@ void World::UpdateGUI()
 	ImGui::Text("Player Wrapped Position: %s", glm::to_string(TranslateIntoWrappedWorld(playerAbsolutePostion/regionLength)*regionLength).c_str());
 	ImGui::PushItemWidth(100);
 	ImGui::SliderFloat("World Spherical Falloff", &sphericalFalloff, 0.0f, 0.5f);
+	ImGui::SliderInt("Render Distance", &renderDistance, 2, 30);
+	ImGui::Text("Region Count: %i", regions.size());
+	
+	int chunkCount = 0;
+	for (auto& region : regions) chunkCount += region.second->GetChunkCount();
+	ImGui::Text("Chunk Count: %i", chunkCount);
+
+	if(ImGui::Button("Clean Regions"))
+	{
+		regions.clear();
+	}
 
 	ImGui::End();
 }
