@@ -41,6 +41,13 @@ void VertexRenderObject::SetVertexAttributePointer()
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 }
 
+VertexRenderObject::~VertexRenderObject()
+{
+	glDeleteVertexArrays(1, &VAO);
+	glDeleteBuffers(1, &VBO);
+	glDeleteBuffers(1, &EBO);
+}
+
 void RenderObject::LoadTexture(const std::string& textureName, int textureNum)
 {
 	unsigned int texture;

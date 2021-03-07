@@ -25,6 +25,7 @@ class VertexRenderObject : public RenderObject
 {
 public:
 	VertexRenderObject(bool addToRenderList = true) : RenderObject(addToRenderList) { };
+	~VertexRenderObject();
 
 protected:
 	virtual void SetVertexAttributePointer();
@@ -32,7 +33,7 @@ protected:
 	virtual bool ShouldDraw() const override;
 
 private:
-	unsigned int VAO, VBO, EBO, IndiceCount;
+	unsigned int VAO = 0, VBO = 0, EBO = 0, IndiceCount = 0;
 
 protected:
 	template <typename T>
@@ -54,6 +55,7 @@ protected:
 
 		SetVertexAttributePointer();
 		glEnableVertexAttribArray(0);
+
 	}
 };
 
