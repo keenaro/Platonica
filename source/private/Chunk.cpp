@@ -243,13 +243,16 @@ void Chunk::GenerateChunkData()
 			const glm::vec3 WSChunkPosition = position * CHUNK_LENGTH;
 
 			const unsigned int baseHeight = 20;
-			const float inclineMultiplier = 20.0f;
+			const float inclineMultiplier = 60.0f;
 
 			if (const SharedPtr<PerlinNoise> perlinGenerator = world.perlin)
 			{
 				const glm::vec3 noisePosition = glm::vec3(x + WSChunkPosition.x, z + WSChunkPosition.y, 0) / CHUNK_LENGTH;
 
-				const float pNoise = perlinGenerator->PNoise(glm::vec3((x + WSChunkPosition.x) / CHUNK_LENGTH, (z + WSChunkPosition.z) / CHUNK_LENGTH, 0.0f), glm::ivec3(regionLength, regionLength, 1.0f));
+				const int frequency = 2;
+				const float minFrequency = glm::min(regionLength, frequency * 2);
+
+				const float pNoise = perlinGenerator->PNoise(glm::vec3((x + WSChunkPosition.x) / CHUNK_LENGTH, (z + WSChunkPosition.z) / CHUNK_LENGTH, 0.0f) / minFrequency, glm::vec3(regionLength, regionLength, minFrequency) / minFrequency);
 				const int noise = pNoise * inclineMultiplier + baseHeight;
 
 				for (int y = 0; y < CHUNK_LENGTH; y++)

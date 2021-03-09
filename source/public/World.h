@@ -19,7 +19,7 @@ public:
 	}
 
 public:
-	World(int inRegionLength = 4);
+	World(int inRegionLength = 32);
 
 public:
 	int GetRegionLength() const { return regionLength; };
