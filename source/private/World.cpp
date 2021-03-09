@@ -62,7 +62,7 @@ void World::UpdateRegions(float deltaTime)
 void World::TryRequestChunks()
 {
 	const glm::ivec3& playerWorldPosition = player->GetPosition();
-	const glm::ivec3& playerChunkPosition = playerWorldPosition / CHUNK_LENGTH;
+	const glm::ivec3& playerChunkPosition = RoundDownToMultiple(playerWorldPosition, CHUNK_LENGTH) / CHUNK_LENGTH;
 
 	const int renderRadius = renderDistance / 2;
 	for (int z = -renderRadius; z < renderRadius; z++)
@@ -71,22 +71,23 @@ void World::TryRequestChunks()
 		{
 			for (int x = -renderRadius; x < renderRadius; x++)
 			{
-				const glm::ivec3& unwrappedChunkPositionChunkSpace = playerChunkPosition + glm::ivec3(x, y, z);
-				const glm::ivec3& chunkPositionChunkSpace = TranslateIntoWrappedWorld(unwrappedChunkPositionChunkSpace);
-				const glm::ivec3& regionPositionChunkSpace = RoundDownToMultiple(unwrappedChunkPositionChunkSpace, regionLength * CHUNK_LENGTH) * glm::ivec3(1,0,1);
-				const glm::vec3& chunkPositionWorldSpace = (regionPositionChunkSpace + chunkPositionChunkSpace) * CHUNK_LENGTH;
+				const glm::ivec3& unwrappedChunkPosition = playerChunkPosition + glm::ivec3(x, y, z);
+				const glm::ivec3& unwrappedChunkWorldPosition = unwrappedChunkPosition * CHUNK_LENGTH;
+				const glm::ivec3& chunkWorldPosition = TranslateIntoWrappedWorld(unwrappedChunkWorldPosition);
+				const glm::ivec3& chunkPosition = chunkWorldPosition / CHUNK_LENGTH;
+				const glm::ivec3& regionPositionWorldSpace = RoundDownToMultiple(unwrappedChunkWorldPosition, regionLength * CHUNK_LENGTH) * glm::ivec3(1, 0, 1);
+				const glm::ivec3& regionPosition = regionPositionWorldSpace / (CHUNK_LENGTH * regionLength);
 
-				if (glm::distance(glm::vec3(playerWorldPosition), chunkPositionWorldSpace) < GetOffloadDistance())
+				if (glm::distance(glm::vec3(playerWorldPosition), glm::vec3(unwrappedChunkWorldPosition)) < GetOffloadDistance())
 				{
-					const glm::ivec3& regionPositionRegionSpace = regionPositionChunkSpace / regionLength;
-					const SharedPtr<ChunkRegion> region = GetOrCreateRegion(regionPositionRegionSpace);
-					if (!region->GetChunk(chunkPositionChunkSpace))
+					const SharedPtr<ChunkRegion> region = GetOrCreateRegion(regionPosition);
+					if (!region->GetChunk(chunkPosition))
 					{
-						SharedPtr<Chunk> chunk = GetChunk(chunkPositionChunkSpace);
+						SharedPtr<Chunk> chunk = GetChunk(chunkPosition);
 						if (!chunk)
 						{
-							DPrintf("Requesting chunk %s\n", glm::to_string(chunkPositionChunkSpace).c_str());
-							chunk = MakeShared<Chunk>(chunkPositionChunkSpace);
+							DPrintf("Requesting chunk at Region(%s) Chunk(%s)\n", glm::to_string(regionPosition).c_str(), glm::to_string(chunkPosition).c_str());
+							chunk = MakeShared<Chunk>(chunkPosition);
 							chunkManager.RequestTask(chunk);
 						}
 
@@ -148,9 +149,19 @@ void World::UpdateGUI()
 {
 	ImGui::Begin("World");
 
-	const glm::vec3 playerAbsolutePostion = player->GetPosition();
-	ImGui::Text("Player Absolute Position: %s", glm::to_string(playerAbsolutePostion).c_str());
-	ImGui::Text("Player Wrapped Position: %s", glm::to_string(TranslateIntoWrappedWorld(playerAbsolutePostion/regionLength)*regionLength).c_str());
+	const glm::ivec3& playerWorldPosition = player->GetPosition();
+	const glm::ivec3& playerChunkPosition = RoundDownToMultiple(playerWorldPosition, CHUNK_LENGTH) / CHUNK_LENGTH;
+	const glm::ivec3& unwrappedChunkPosition = playerChunkPosition;
+	const glm::ivec3& unwrappedChunkWorldPosition = unwrappedChunkPosition * CHUNK_LENGTH;
+	const glm::ivec3& chunkWorldPosition = TranslateIntoWrappedWorld(unwrappedChunkWorldPosition);
+	const glm::ivec3& chunkPosition = chunkWorldPosition / CHUNK_LENGTH;
+	const glm::ivec3& regionPositionWorldSpace = RoundDownToMultiple(unwrappedChunkWorldPosition, regionLength * CHUNK_LENGTH) * glm::ivec3(1, 0, 1);
+	const glm::ivec3& regionPosition = regionPositionWorldSpace / (CHUNK_LENGTH * regionLength);
+	ImGui::Text("Chunk Position: %s", glm::to_string(chunkPosition).c_str());
+	ImGui::Text("Region Position: %s", glm::to_string(regionPosition).c_str());
+
+	ImGui::Text("Player World Position: %s", glm::to_string(playerWorldPosition).c_str());
+	ImGui::Text("Player Wrapped Position: %s", glm::to_string(TranslateIntoWrappedWorld(playerWorldPosition /regionLength)*regionLength).c_str());
 	ImGui::PushItemWidth(100);
 	ImGui::SliderFloat("World Spherical Falloff", &sphericalFalloff, 0.0f, 0.5f);
 	ImGui::SliderInt("Render Distance", &renderDistance, 2, 30);
@@ -165,5 +176,60 @@ void World::UpdateGUI()
 		regions.clear();
 	}
 
+
+
+
 	ImGui::End();
+}
+
+void World::PlaceBlockInPlayerSight()
+{
+	const int regionLen = GetRegionLength();
+
+	const glm::vec3 startPosition = player->GetPosition();
+	const glm::vec3 endPosition = startPosition + player->GetDirection() * player->GetReach();
+	const glm::vec3 deltaPos = endPosition - startPosition;
+
+	float step = glm::max(glm::max(abs(deltaPos.x), abs(deltaPos.y)), abs(deltaPos.z));
+	const glm::vec3 stepAmount = deltaPos / step;
+
+	const auto GetStepInfo = [this, &startPosition, &stepAmount](glm::ivec3& outBlockPosition, int step, bool createChunkIfNull = false) -> SharedPtr<Chunk>
+	{
+		const glm::vec3 stepPos = startPosition + stepAmount * step;
+		const glm::ivec3 flooredPos = glm::floor(stepPos);
+		const glm::ivec3 regionWorldPosition = RoundDownToMultiple(flooredPos, regionLength * CHUNK_LENGTH) * glm::ivec3(1,0,1);
+		const glm::ivec3 blockWorldPos = flooredPos - regionWorldPosition;
+		const glm::ivec3 chunkWorldPos = RoundDownToMultiple(blockWorldPos, CHUNK_LENGTH);
+		const glm::ivec3 blockPos = blockWorldPos - chunkWorldPos;
+		const glm::ivec3 regionPosition = regionWorldPosition / (regionLength * CHUNK_LENGTH);
+		const glm::ivec3 chunkPos = chunkWorldPos / CHUNK_LENGTH;
+		outBlockPosition = blockPos;
+		SharedPtr<ChunkRegion> region = GetOrCreateRegion(regionPosition);
+		SharedPtr<Chunk> chunk = region->GetChunk(chunkPos);
+		if (!chunk && createChunkIfNull)
+		{
+			chunk = MakeShared<Chunk>(chunkPos);
+			region->InsertChunk(chunk);
+		}
+
+		return chunk;
+	};
+
+	glm::ivec3 blockPosition;
+	for (int stepI = 1; stepI <= step; stepI++) {
+		if(SharedPtr<Chunk> chunk = GetStepInfo(blockPosition, stepI))
+		{
+			if (chunk->GetBlock(blockPosition).GetID() != Air)
+			{
+				glm::ivec3 prevBlockPosition;
+				if (stepI > 1)
+				{
+					SharedPtr<Chunk> prevChunk = GetStepInfo(prevBlockPosition, stepI - 1, true);
+					prevChunk->SetBlockAtPosition(prevBlockPosition, CubeID::Stone);
+				}
+
+				return;
+			}
+		}
+	}
 }

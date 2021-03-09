@@ -12,6 +12,7 @@ public:
 	void Update(float deltaTime) override;
 	const glm::vec3& GetMovementSpeed() const { return movementSpeed; };
 	const glm::vec3& GetRotationSpeed() const { return rotationSpeed; };
+	int GetReach() const { return reach; };
 	void UpdateGUI();
 
 private:
@@ -21,4 +22,5 @@ private:
 	glm::vec3 movementSpeed;
 	float speedIncreaseMulitplier = 10.0f;
 	glm::vec3 rotationSpeed;
+	int reach = 100;
 };

@@ -4,7 +4,6 @@
 
 ChunkRegion::ChunkRegion(const glm::ivec3& inPosition) : RenderObject(false), Position(inPosition), UpdateObject(false)
 {
-	position = inPosition;
 	shader = World::Instance().GetShader();
 }
 

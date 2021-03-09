@@ -25,6 +25,7 @@ public:
 	int GetRegionLength() const { return regionLength; };
 	int GetRenderDistance() const { return renderDistance * CHUNK_LENGTH; };
 	int GetOffloadDistance() const { return GetRenderDistance() + CHUNK_LENGTH; }
+	void PlaceBlockInPlayerSight();
 
 	void Update(float deltaTime) override;
 	void Draw() override;

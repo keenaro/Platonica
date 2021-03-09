@@ -75,29 +75,34 @@ void Chunk::UpdateAllFaces()
 		{
 			for (int x = 0; x < CHUNK_LENGTH; x++)
 			{
-				Cube& cube = data[x][y][z];
-				cube.SetFaceData(CubeFace::All);
-
-				if (y > 0 && data[x][y - 1][z].CanSee())
-					cube.CullFace(CubeFace::Bottom);
-
-				if (y < CHUNK_LENGTH - 1 && data[x][y + 1][z].CanSee())
-					cube.CullFace(CubeFace::Top);
-
-				if (x > 0 && data[x - 1][y][z].CanSee())
-					cube.CullFace(CubeFace::Right);
-
-				if (x < CHUNK_LENGTH - 1 && data[x + 1][y][z].CanSee())
-					cube.CullFace(CubeFace::Left);
-
-				if (z > 0 && data[x][y][z - 1].CanSee())
-					cube.CullFace(CubeFace::Back);
-
-				if (z < CHUNK_LENGTH - 1 && data[x][y][z + 1].CanSee())
-					cube.CullFace(CubeFace::Front);
+				UpdateCubeFaces(glm::ivec3(x, y, z));
 			}
 		}
 	}
+}
+
+void Chunk::UpdateCubeFaces(const glm::ivec3& position)
+{
+	Cube& cube = data[position.x][position.y][position.z];
+	cube.SetFaceData(CubeFace::All);
+
+	if (position.y > 0 && data[position.x][position.y - 1][position.z].CanSee())
+		cube.CullFace(CubeFace::Bottom);
+
+	if (position.y < CHUNK_LENGTH - 1 && data[position.x][position.y + 1][position.z].CanSee())
+		cube.CullFace(CubeFace::Top);
+
+	if (position.x > 0 && data[position.x - 1][position.y][position.z].CanSee())
+		cube.CullFace(CubeFace::Right);
+
+	if (position.x < CHUNK_LENGTH - 1 && data[position.x + 1][position.y][position.z].CanSee())
+		cube.CullFace(CubeFace::Left);
+
+	if (position.z > 0 && data[position.x][position.y][position.z - 1].CanSee())
+		cube.CullFace(CubeFace::Back);
+
+	if (position.z < CHUNK_LENGTH - 1 && data[position.x][position.y][position.z + 1].CanSee())
+		cube.CullFace(CubeFace::Front);
 }
 
 void Chunk::AddCubeAtPosition(const glm::ivec3& positionInsideChunk, const Cube& cube, std::vector<int32_t>& vertices, std::vector<unsigned int>& indices) const
@@ -235,16 +240,16 @@ void Chunk::GenerateChunkData()
 			World& world = World::Instance();
 			const int regionLength = world.GetRegionLength();
 
-			const glm::ivec3 WSChunkPosition = position * CHUNK_LENGTH;
+			const glm::vec3 WSChunkPosition = position * CHUNK_LENGTH;
 
-			const int frequency = 64;
-			const unsigned int baseHeight = 10;
-			const float inclineMultiplier = 50.0f;
+			const unsigned int baseHeight = 20;
+			const float inclineMultiplier = 20.0f;
 
 			if (const SharedPtr<PerlinNoise> perlinGenerator = world.perlin)
 			{
-				const float pNoise = perlinGenerator->PNoise(glm::vec3(float(x + WSChunkPosition.x) / frequency, float(z + WSChunkPosition.z) / frequency, 0.0f), glm::ivec3(regionLength, regionLength, 1.0f));
+				const glm::vec3 noisePosition = glm::vec3(x + WSChunkPosition.x, z + WSChunkPosition.y, 0) / CHUNK_LENGTH;
 
+				const float pNoise = perlinGenerator->PNoise(glm::vec3((x + WSChunkPosition.x) / CHUNK_LENGTH, (z + WSChunkPosition.z) / CHUNK_LENGTH, 0.0f), glm::ivec3(regionLength, regionLength, 1.0f));
 				const int noise = pNoise * inclineMultiplier + baseHeight;
 
 				for (int y = 0; y < CHUNK_LENGTH; y++)
@@ -252,7 +257,7 @@ void Chunk::GenerateChunkData()
 					const int caveFreq = 16;
 					const float caveInclineMultiplier = position.y;
 					const int caveThreshold = 1;
-					const float testNoise = perlinGenerator->PNoise(glm::vec3(float(x + WSChunkPosition.x) / caveFreq, float(z + WSChunkPosition.z) / caveFreq, float(y + WSChunkPosition.y) / caveFreq), glm::ivec3(regionLength, regionLength, 10000.0f));
+					const float testNoise = perlinGenerator->PNoise(glm::vec3((x + WSChunkPosition.x) / CHUNK_LENGTH, (z + WSChunkPosition.z) / CHUNK_LENGTH, (y + WSChunkPosition.y) / CHUNK_LENGTH), glm::ivec3(regionLength, regionLength, 10000.0f));
 					const int tnoise = testNoise * caveInclineMultiplier;
 
 					CubeID id = Air;
@@ -273,11 +278,36 @@ void Chunk::GenerateChunkData()
 	loaded = true;
 }
 
-bool Chunk::IsInsideChunk(const glm::vec3& inPos) const
+void Chunk::SetBlockAtPosition(const glm::ivec3& position, CubeID newBlock)
 {
-	return (inPos.x > position.x && inPos.x < position.x + CHUNK_LENGTH &&
-		inPos.y > position.y && inPos.y < position.y + CHUNK_LENGTH &&
-		inPos.z > position.z && inPos.z < position.z + CHUNK_LENGTH);
+	data[position.x][position.y][position.z] = newBlock;
+	UpdateCubeFaces(position);
+
+	if(IsPositionInsideChunk(position + glm::ivec3(-1,0,0))) {
+		UpdateCubeFaces(position + glm::ivec3(-1, 0, 0));
+	}
+	if (IsPositionInsideChunk(position + glm::ivec3(1, 0, 0))) {
+		UpdateCubeFaces(position + glm::ivec3(1, 0, 0));
+	}
+	if (IsPositionInsideChunk(position + glm::ivec3(0, -1, 0))) {
+		UpdateCubeFaces(position + glm::ivec3(0, -1, 0));
+	}
+	if (IsPositionInsideChunk(position + glm::ivec3(0, 1, 0))) {
+		UpdateCubeFaces(position + glm::ivec3(0, 1, 0));
+	}
+	if (IsPositionInsideChunk(position + glm::ivec3(0, 0, -1))) {
+		UpdateCubeFaces(position + glm::ivec3(0, 0, -1));
+	}
+	if (IsPositionInsideChunk(position + glm::ivec3(0, 0, 1))) {
+		UpdateCubeFaces(position + glm::ivec3(0, 0, 1));
+	}
+
+	dirty = true;
+}
+
+bool Chunk::IsPositionInsideChunk(const glm::ivec3& position) const 
+{
+	return position.x >= 0 && position.x < CHUNK_LENGTH&& position.y >= 0 && position.y < CHUNK_LENGTH&& position.z >= 0 && position.z < CHUNK_LENGTH;
 }
 
 void Chunk::SetVertexAttributePointer()
