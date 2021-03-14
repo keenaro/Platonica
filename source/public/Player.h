@@ -1,6 +1,7 @@
 #pragma once
 #include "Camera.h"
 #include "UpdateObject.h"
+#include "TestObjects.h"
 
 class Player : public Camera, public UpdateObject
 {
@@ -22,5 +23,6 @@ private:
 	glm::vec3 movementSpeed;
 	float speedIncreaseMulitplier = 10.0f;
 	glm::vec3 rotationSpeed;
-	int reach = 100;
+	int reach = 7;
+	SharedPtr<BoxObject> reticle;
 };

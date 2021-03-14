@@ -19,13 +19,13 @@ public:
 	}
 
 public:
-	World(int inRegionLength = 32);
+	World(int inRegionLength = 8);
 
 public:
 	int GetRegionLength() const { return regionLength; };
 	int GetRenderDistance() const { return renderDistance * CHUNK_LENGTH; };
 	int GetOffloadDistance() const { return GetRenderDistance() + CHUNK_LENGTH; }
-	void PlaceBlockInPlayerSight();
+	void PlaceBlockFromPositionInDirection(const glm::vec3& position, const glm::vec3& direction, float maxDistance, CubeID blockToPlace, bool shouldReplaceBlock = false);
 
 	void Update(float deltaTime) override;
 	void Draw() override;
@@ -34,6 +34,7 @@ public:
 
 	SharedPtr<Player> GetPlayer() const { return player; };
 	SharedPtr<ChunkRegion> GetOrCreateRegion(const glm::ivec3& pos);
+
 
 	AsyncChunkManager chunkManager;
 	SharedPtr<PerlinNoise> perlin;
@@ -45,6 +46,8 @@ private:
 
 	void TryRequestChunks();
 	SharedPtr<Chunk> GetChunk(const glm::ivec3& chunkPosition) const;
+	SharedPtr<Chunk> GetOrCreateChunkFromWorldPosition(const glm::vec3& position, bool createIfNull = false);
+	void GetBlockWorldPosition(const glm::vec3& position, glm::ivec3& outBlockWorldPosition);
 
 	int TranslateIntoWrappedWorld(int value) const;
 

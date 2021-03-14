@@ -11,7 +11,6 @@ glm::vec3 Rotation::GetRightDirection() const
 {
 	const float rightRot = rotation.x - glm::half_pi<float>();
 	return glm::cross(GetDirection(), glm::vec3(0, 1, 0));
-	//return glm::vec3(sin(rightRot), 0, cos(rightRot));
 };
 
 glm::vec3 Rotation::GetUpDirection() const

@@ -4,14 +4,14 @@
 class BoxObject : public VertexRenderObject
 {
 public:
-	BoxObject::BoxObject(bool addToRenderList = true) : VertexRenderObject(addToRenderList)
+	BoxObject::BoxObject(glm::vec2& size, bool addToRenderList = true) : VertexRenderObject(addToRenderList)
 	{
 		const std::vector<float> vertices
 		{
-			 0.1f,  0.1f, 0.0f,
-			 0.1f, -0.1f, 0.0f,
-			-0.1f, -0.1f, 0.0f,
-			-0.1f,  0.1f, 0.0f,
+			size.x, -size.y, 0.0f,
+			 size.x,  size.y, 0.0f,
+			-size.x,  size.y, 0.0f,
+			-size.x, -size.y, 0.0f,
 		};
 
 		const std::vector<unsigned int> indices

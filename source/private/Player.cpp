@@ -1,20 +1,23 @@
 #include "Player.h"
 #include "GLFW/glfw3.h"
 #include "World.h"
+#include "Window.h"
 
 Player::Player(Camera& camera) : Camera(camera), UpdateObject(false)
 {
 	movementSpeed = glm::vec3(2.f, 2.f, 2.f);
 	rotationSpeed = glm::vec3(1.5f, 1.5f, 1.5f);
-	position = glm::vec3(-16, 32.1f, 2.2f);
-	rotation = glm::vec3(45.0f, 0.0f, 45.0f);
+	position = glm::vec3(0, 32, 0);
+	rotation = glm::vec3(glm::two_pi<float>() * 0.9f, -0.1f, 0.f);
+	reticle = MakeShared<BoxObject>(glm::vec2(1, Window::Instance().GetAspectRatio()) * 0.002f, true);
 }
 
 void Player::Rotate(glm::vec3& rotate)
 {
 	Camera::Rotate(rotate);
-	const int sign = (0 < rotation.y) - (rotation.y < 0);
-	rotation.y = abs(rotation.y) > 1.5 ? 1.5 * sign : rotation.y;
+	const int sign = glm::sign(rotation.y);
+	const float halfPi = glm::half_pi<float>() - 0.001f;
+	rotation.y = abs(rotation.y) > halfPi ? halfPi * sign : rotation.y;
 }
 
 void Player::Update(float deltaTime)
@@ -44,10 +47,29 @@ void Player::ProcessJoystick(float deltaTime)
 		{
 			speedIncrease = speedIncreaseMulitplier;
 		}
+
+		//#Needs reworking.
+		static bool holdingA = false;
 		if (buttons[GLFW_GAMEPAD_BUTTON_A] == GLFW_PRESS)
 		{
-			World::Instance().PlaceBlockInPlayerSight();
+			if (!holdingA)
+			{
+				World::Instance().PlaceBlockFromPositionInDirection(GetPosition(), GetDirection(), GetReach(), CubeID::Stone);
+			}
+			holdingA = true;
 		}
+		else holdingA = false;
+
+		static bool holdingX = false;
+		if (buttons[GLFW_GAMEPAD_BUTTON_X] == GLFW_PRESS)
+		{
+			if (!holdingX)
+			{
+				World::Instance().PlaceBlockFromPositionInDirection(GetPosition(), GetDirection(), GetReach(), CubeID::Air, true);
+			}
+			holdingX = true;
+		}
+		else holdingX = false;
 	}
 
 	const float* axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &count);
@@ -78,6 +100,9 @@ void Player::UpdateGUI()
 
 	ImGui::PushItemWidth(100);
 	ImGui::SliderFloat("Speed Increase Multiplier", &speedIncreaseMulitplier, 10.0f, 100.0f);
+
+	ImGui::Text("Position: %s", glm::to_string(position).c_str());
+	ImGui::Text("Rotation: %s", glm::to_string(GetDirection()).c_str());
 
 	ImGui::End();
 }
