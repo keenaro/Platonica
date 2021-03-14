@@ -35,10 +35,26 @@ void World::DrawRegions() const
 
 void World::Update(float deltaTime)
 {
-	UpdateRegions(deltaTime);
 	player->Update(deltaTime);
-	TryRequestChunks();	
+	UpdatePlayerHasMovedChunk();
+	UpdateRegions(deltaTime);
+	TryRequestChunks();
 	UpdateGUI();
+}
+
+void World::UpdatePlayerHasMovedChunk()
+{
+	const glm::ivec3& playerChunkPosition = RoundDownToMultiple(player->GetPosition(), CHUNK_LENGTH) / CHUNK_LENGTH;
+
+	if (playerChunkPosition != cachedPlayerChunkPosition)
+	{
+		cachedPlayerChunkPosition = playerChunkPosition;
+		playerMovedChunk = true;
+	}
+	else
+	{
+		playerMovedChunk = false;
+	}
 }
 
 void World::UpdateRegions(float deltaTime)
@@ -83,7 +99,7 @@ void World::TryRequestChunks()
 					const SharedPtr<ChunkRegion> region = GetOrCreateRegion(regionPosition);
 					if (!region->GetChunk(chunkPosition))
 					{
-						SharedPtr<Chunk> chunk = GetChunk(chunkPosition);
+						SharedPtr<Chunk> chunk = FindChunk(chunkPosition);
 						if (!chunk)
 						{
 							DPrintf("Requesting chunk at Region(%s) Chunk(%s)\n", glm::to_string(regionPosition).c_str(), glm::to_string(chunkPosition).c_str());
@@ -99,7 +115,7 @@ void World::TryRequestChunks()
 	}
 }
 
-SharedPtr<Chunk> World::GetChunk(const glm::ivec3& chunkPosition) const
+SharedPtr<Chunk> World::FindChunk(const glm::ivec3& chunkPosition) const
 {
 	for(auto& region : regions)
 	{

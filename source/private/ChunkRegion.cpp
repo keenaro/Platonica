@@ -31,7 +31,10 @@ void ChunkRegion::DrawChunks() const
 
 void ChunkRegion::Update(float deltaTime)
 {
-	RemoveOutOfDistanceChunks();
+	if (World::Instance().DidPlayerMoveChunk())
+	{
+		RemoveOutOfDistanceChunks();
+	}
 }
 
 glm::ivec3 ChunkRegion::GetWorldPosition() const 

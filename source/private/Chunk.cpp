@@ -81,27 +81,31 @@ void Chunk::UpdateAllFaces()
 	}
 }
 
-void Chunk::UpdateCubeFaces(const glm::ivec3& position)
+void Chunk::UpdateCubeFaces(const glm::ivec3& cubePosition)
 {
-	Cube& cube = data[position.x][position.y][position.z];
+	Cube& cube = data[cubePosition.x][cubePosition.y][cubePosition.z];
 	cube.SetFaceData(CubeFace::All);
 
-	if (position.y > 0 && data[position.x][position.y - 1][position.z].CanSee())
+	const CubeDefs& cubeDefs =  CubeDefs::Instance();
+
+	const glm::vec3 cp = position * CHUNK_LENGTH;
+
+	if (cubePosition.y > 0 ? data[cubePosition.x][cubePosition.y - 1][cubePosition.z].CanSee() : cubeDefs.ShouldAffectCull(GetCubeIdAtPosition(cp + glm::vec3(cubePosition.x, cubePosition.y - 1, cubePosition.z))))
 		cube.CullFace(CubeFace::Bottom);
 
-	if (position.y < CHUNK_LENGTH - 1 && data[position.x][position.y + 1][position.z].CanSee())
+	if (cubePosition.y < CHUNK_LENGTH - 1 ? data[cubePosition.x][cubePosition.y + 1][cubePosition.z].CanSee() : cubeDefs.ShouldAffectCull(GetCubeIdAtPosition(cp + glm::vec3(cubePosition.x, cubePosition.y + 1, cubePosition.z))))
 		cube.CullFace(CubeFace::Top);
 
-	if (position.x > 0 && data[position.x - 1][position.y][position.z].CanSee())
+	if (cubePosition.x > 0 ? data[cubePosition.x - 1][cubePosition.y][cubePosition.z].CanSee() : cubeDefs.ShouldAffectCull(GetCubeIdAtPosition(cp + glm::vec3(cubePosition.x - 1, cubePosition.y, cubePosition.z))))
 		cube.CullFace(CubeFace::Right);
 
-	if (position.x < CHUNK_LENGTH - 1 && data[position.x + 1][position.y][position.z].CanSee())
+	if (cubePosition.x < CHUNK_LENGTH - 1 ? data[cubePosition.x + 1][cubePosition.y][cubePosition.z].CanSee() : cubeDefs.ShouldAffectCull(GetCubeIdAtPosition(cp + glm::vec3(cubePosition.x + 1, cubePosition.y, cubePosition.z))))
 		cube.CullFace(CubeFace::Left);
 
-	if (position.z > 0 && data[position.x][position.y][position.z - 1].CanSee())
+	if (cubePosition.z > 0 ? data[cubePosition.x][cubePosition.y][cubePosition.z - 1].CanSee() : cubeDefs.ShouldAffectCull(GetCubeIdAtPosition(cp + glm::vec3(cubePosition.x, cubePosition.y, cubePosition.z - 1))))
 		cube.CullFace(CubeFace::Back);
 
-	if (position.z < CHUNK_LENGTH - 1 && data[position.x][position.y][position.z + 1].CanSee())
+	if (cubePosition.z < CHUNK_LENGTH - 1 ? data[cubePosition.x][cubePosition.y][cubePosition.z + 1].CanSee() : cubeDefs.ShouldAffectCull(GetCubeIdAtPosition(cp + glm::vec3(cubePosition.x, cubePosition.y, cubePosition.z + 1))))
 		cube.CullFace(CubeFace::Front);
 }
 
@@ -233,46 +237,15 @@ int32_t Chunk::GetCubeVertexData(const CubeID cubeID, const glm::ivec3& vertexPo
 
 void Chunk::GenerateChunkData()
 { 
+	const glm::vec3 WSChunkPosition = position * CHUNK_LENGTH;
+
 	for (int z = 0; z < CHUNK_LENGTH; z++)
 	{
 		for (int x = 0; x < CHUNK_LENGTH; x++)
 		{
-			World& world = World::Instance();
-			const int regionLength = world.GetRegionLength();
-
-			const glm::vec3 WSChunkPosition = position * CHUNK_LENGTH;
-
-			const unsigned int baseHeight = 20;
-			const float inclineMultiplier = 60.0f;
-
-			if (const SharedPtr<PerlinNoise> perlinGenerator = world.perlin)
+			for (int y = 0; y < CHUNK_LENGTH; y++)
 			{
-				const glm::vec3 noisePosition = glm::vec3(x + WSChunkPosition.x, z + WSChunkPosition.y, 0) / CHUNK_LENGTH;
-
-				const int frequency = 2;
-				const float minFrequency = glm::min(regionLength, frequency * 2);
-
-				const float pNoise = perlinGenerator->PNoise(glm::vec3((x + WSChunkPosition.x) / CHUNK_LENGTH, (z + WSChunkPosition.z) / CHUNK_LENGTH, 0.0f) / minFrequency, glm::vec3(regionLength, regionLength, minFrequency) / minFrequency);
-				const int noise = pNoise * inclineMultiplier + baseHeight;
-
-				for (int y = 0; y < CHUNK_LENGTH; y++)
-				{
-					const int caveFreq = 16;
-					const float caveInclineMultiplier = position.y;
-					const int caveThreshold = 1;
-					const float testNoise = perlinGenerator->PNoise(glm::vec3((x + WSChunkPosition.x) / CHUNK_LENGTH, (z + WSChunkPosition.z) / CHUNK_LENGTH, (y + WSChunkPosition.y) / CHUNK_LENGTH), glm::ivec3(regionLength, regionLength, 10000.0f));
-					const int tnoise = testNoise * caveInclineMultiplier;
-
-					CubeID id = Air;
-					if (WSChunkPosition.y + y < noise)
-					{
-						id = WSChunkPosition.y + y + 1 == noise ? Grass : WSChunkPosition.y + y + 5 > noise ? Dirt : Stone;
-
-						if (WSChunkPosition.y + y < noise - 5 && tnoise > caveThreshold) id = Air;
-					}
-
-					data[x][y][z].SetID(id);
-				}
+				data[x][y][z].SetID(GetCubeIdAtPosition(WSChunkPosition + glm::vec3(x, y, z)));
 			}
 		}
 	}
@@ -281,28 +254,71 @@ void Chunk::GenerateChunkData()
 	loaded = true;
 }
 
-void Chunk::SetBlockAtPosition(const glm::ivec3& position, CubeID newBlock)
+CubeID Chunk::GetCubeIdAtPosition(const glm::vec3& cubePosition)
 {
-	data[position.x][position.y][position.z] = newBlock;
-	UpdateCubeFaces(position);
+	const World& world = World::Instance();
 
-	if(IsPositionInsideChunk(position + glm::ivec3(-1,0,0))) {
-		UpdateCubeFaces(position + glm::ivec3(-1, 0, 0));
+	const unsigned int baseHeight = 20;
+	const float inclineMultiplier = 30.0f;
+	const int regionLength = world.GetRegionLength();
+	const glm::vec3 wrappedPosition = world.TranslateIntoWrappedWorld(cubePosition);
+	const int caveFreq = 16;
+	const int caveThreshold = 10;
+
+	CubeID id = Air;
+
+	if (const SharedPtr<PerlinNoise> perlinGenerator = world.GetPerlinNoiseGenerator())
+	{
+		const glm::vec3 noisePosition = glm::vec3(wrappedPosition.x, wrappedPosition.z, 0) / CHUNK_LENGTH;
+
+		const int frequency = 2;
+		const float minFrequency = glm::min(regionLength, frequency * 2);
+
+		const float pNoise = perlinGenerator->PNoise(glm::vec3(wrappedPosition.x / CHUNK_LENGTH, wrappedPosition.z / CHUNK_LENGTH, 0.0f) / minFrequency, glm::vec3(regionLength, regionLength, minFrequency) / minFrequency);
+		const int noise = pNoise * inclineMultiplier + baseHeight;
+
+		if (wrappedPosition.y < noise)
+		{
+			const float caveInclineMultiplier = noise + abs(wrappedPosition.y) * 0.01f;
+			const float testNoise = perlinGenerator->PNoise(glm::vec3(wrappedPosition.x / CHUNK_LENGTH, wrappedPosition.z / CHUNK_LENGTH, wrappedPosition.y / CHUNK_LENGTH), glm::ivec3(regionLength, regionLength, 10000.0f));
+			const int tnoise = testNoise * caveInclineMultiplier;
+			if (tnoise > caveThreshold) {
+				id = Air;
+			}
+			else {
+				id = wrappedPosition.y + 1 == noise ? Grass : wrappedPosition.y + 5 > noise ? Dirt : Stone;
+			}
+		}
 	}
-	if (IsPositionInsideChunk(position + glm::ivec3(1, 0, 0))) {
-		UpdateCubeFaces(position + glm::ivec3(1, 0, 0));
+
+	return id;
+}
+
+void Chunk::SetBlockAtPosition(const glm::ivec3& blockPosition, CubeID newBlock)
+{
+	DPrintf("Placed block at %s\n", glm::to_string(blockPosition + position).c_str());
+	data[blockPosition.x][blockPosition.y][blockPosition.z] = newBlock;
+	UpdateCubeFaces(blockPosition);
+
+	//#TODO UPDATE BLOCKS ON ADJACENT CHUNKS
+
+	if (IsPositionInsideChunk(blockPosition + glm::ivec3(-1, 0, 0))) {
+		UpdateCubeFaces(blockPosition + glm::ivec3(-1, 0, 0));
 	}
-	if (IsPositionInsideChunk(position + glm::ivec3(0, -1, 0))) {
-		UpdateCubeFaces(position + glm::ivec3(0, -1, 0));
+	if (IsPositionInsideChunk(blockPosition + glm::ivec3(1, 0, 0))) {
+		UpdateCubeFaces(blockPosition + glm::ivec3(1, 0, 0));
 	}
-	if (IsPositionInsideChunk(position + glm::ivec3(0, 1, 0))) {
-		UpdateCubeFaces(position + glm::ivec3(0, 1, 0));
+	if (IsPositionInsideChunk(blockPosition + glm::ivec3(0, -1, 0))) {
+		UpdateCubeFaces(blockPosition + glm::ivec3(0, -1, 0));
 	}
-	if (IsPositionInsideChunk(position + glm::ivec3(0, 0, -1))) {
-		UpdateCubeFaces(position + glm::ivec3(0, 0, -1));
+	if (IsPositionInsideChunk(blockPosition + glm::ivec3(0, 1, 0))) {
+		UpdateCubeFaces(blockPosition + glm::ivec3(0, 1, 0));
 	}
-	if (IsPositionInsideChunk(position + glm::ivec3(0, 0, 1))) {
-		UpdateCubeFaces(position + glm::ivec3(0, 0, 1));
+	if (IsPositionInsideChunk(blockPosition + glm::ivec3(0, 0, -1))) {
+		UpdateCubeFaces(blockPosition + glm::ivec3(0, 0, -1));
+	}
+	if (IsPositionInsideChunk(blockPosition + glm::ivec3(0, 0, 1))) {
+		UpdateCubeFaces(blockPosition + glm::ivec3(0, 0, 1));
 	}
 
 	dirty = true;

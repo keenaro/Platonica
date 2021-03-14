@@ -32,7 +32,7 @@ protected:
 	virtual void Draw() override;
 	virtual bool ShouldDraw() const override;
 
-private:
+protected:
 	unsigned int VAO = 0, VBO = 0, EBO = 0, IndiceCount = 0;
 
 protected:

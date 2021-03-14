@@ -19,7 +19,7 @@ public:
 	}
 
 public:
-	World(int inRegionLength = 8);
+	World(int inRegionLength = 16);
 
 public:
 	int GetRegionLength() const { return regionLength; };
@@ -34,28 +34,32 @@ public:
 
 	SharedPtr<Player> GetPlayer() const { return player; };
 	SharedPtr<ChunkRegion> GetOrCreateRegion(const glm::ivec3& pos);
+	SharedPtr<Chunk> FindChunk(const glm::ivec3& chunkPosition) const;
 
+	bool DidPlayerMoveChunk() const { return playerMovedChunk; };
 
-	AsyncChunkManager chunkManager;
-	SharedPtr<PerlinNoise> perlin;
-
+	SharedPtr<PerlinNoise> GetPerlinNoiseGenerator() const { return perlin; };
 private:
 	void DrawRegions() const;
 	void UpdateRegions(float deltaTime);
 	void SetShaderUniformValues() override;
 
 	void TryRequestChunks();
-	SharedPtr<Chunk> GetChunk(const glm::ivec3& chunkPosition) const;
 	SharedPtr<Chunk> GetOrCreateChunkFromWorldPosition(const glm::vec3& position, bool createIfNull = false);
 	void GetBlockWorldPosition(const glm::vec3& position, glm::ivec3& outBlockWorldPosition);
 
 	int TranslateIntoWrappedWorld(int value) const;
+	void UpdatePlayerHasMovedChunk();
 
 	void UpdateGUI();
 private:
 	int regionLength;
 	SharedIVec3Map<ChunkRegion> regions;
 	SharedPtr<Player> player;
+	AsyncChunkManager chunkManager;
+	SharedPtr<PerlinNoise> perlin;
+	glm::ivec3 cachedPlayerChunkPosition;
+	bool playerMovedChunk = false;
 
 private:
 	int renderDistance = 8;

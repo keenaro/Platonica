@@ -11,7 +11,6 @@ public:
 	Chunk(const glm::ivec3& inPosition);
 
 public:
-	bool IsInsideChunk(const glm::vec3& position) const;
 	void Draw() override;
 	bool ShouldDraw(const glm::ivec3& chunkRegionWorldPosition) const;
 
@@ -19,15 +18,17 @@ public:
 	glm::ivec3 GetWorldPosition() const { return position * CHUNK_LENGTH; };
 	glm::ivec3 GetWorldCentrePosition() const { return position * CHUNK_LENGTH + glm::ivec3(CHUNK_LENGTH / 2); }
 
-	void SetBlockAtPosition(const glm::ivec3& position, CubeID newBlock);
+	void SetBlockAtPosition(const glm::ivec3& blockPosition, CubeID newBlock);
 	const Cube& GetBlock(const glm::ivec3& position) const { return data[position.x][position.y][position.z]; }
 
 	bool IsLoaded() const { return loaded; };
 
+	static CubeID GetCubeIdAtPosition(const glm::vec3& position);
+
 private:
 	void GenerateBuffers();
 	void UpdateAllFaces();
-	void UpdateCubeFaces(const glm::ivec3& position);
+	void UpdateCubeFaces(const glm::ivec3& cubePosition);
 	void AddCubeAtPosition(const glm::ivec3& positionInsideChunk, const Cube& cube, std::vector<int32_t>& vertices, std::vector<unsigned int>& indices) const;
 	glm::ivec3 GetCubePositionFromCubeVertex(int32_t inData) const;
 	glm::ivec3 GetNormalFromCubeVertex(int32_t inData) const;
@@ -36,6 +37,7 @@ private:
 	void SetVertexAttributePointer() override;
 	void SetShaderUniformValues() override;
 	bool IsPositionInsideChunk(const glm::ivec3& position) const;
+
 
 private:
 	bool dirty = true;
