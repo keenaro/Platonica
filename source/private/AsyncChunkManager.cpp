@@ -2,25 +2,35 @@
 #include "World.h"
 #include "ChunkRegion.h"
 
-AsyncChunkManager::~AsyncChunkManager()
+void AsyncChunkManager::Start(int numOfWorkers)
 {
-	shouldWork = false;
-	workThread.join();
-}
-
-void AsyncChunkManager::Start()
-{
-	workThread = std::thread(&AsyncChunkManager::DoWork, this);
+	for (int i = 0; i < numOfWorkers; i++)
+	{
+		SharedPtr<AsyncChunkWorker> newWorker = MakeShared<AsyncChunkWorker>();
+		newWorker->Start();
+		workers.push_back(newWorker);
+	}
 }
 
 void AsyncChunkManager::RequestTask(SharedPtr<Chunk> chunk)
+{
+	workers[lastJobIndex]->RequestTask(chunk);
+	if (++lastJobIndex > workers.size() - 1) lastJobIndex = 0;
+}
+
+void AsyncChunkWorker::RequestTask(SharedPtr<Chunk> chunk)
 {
 	while (!requestingTask.try_lock()) {}
 	requestedTasks.push(chunk);
 	requestingTask.unlock();
 }
 
-void AsyncChunkManager::DoWork()
+void AsyncChunkWorker::Start()
+{
+	workThread = std::thread(&AsyncChunkWorker::DoWork, this);
+}
+
+void AsyncChunkWorker::DoWork()
 {
 	while (shouldWork)
 	{
@@ -30,11 +40,20 @@ void AsyncChunkManager::DoWork()
 			SharedPtr<Chunk> currentChunkTask = requestedTasks.front();
 			requestedTasks.pop();
 			requestingTask.unlock();
-			currentChunkTask->GenerateChunkData();
+			if (currentChunkTask.use_count() > 1)
+			{
+				currentChunkTask->GenerateChunkData();
+			}
 		}
 		else
 		{
 			Sleep(10);
 		}
 	}
+}
+
+AsyncChunkWorker::~AsyncChunkWorker()
+{
+	shouldWork = false;
+	workThread.join();
 }

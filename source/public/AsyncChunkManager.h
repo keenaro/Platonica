@@ -9,21 +9,33 @@
 
 class Chunk;
 
-class AsyncChunkManager
+class AsyncChunkWorker
 {
 public:
-	AsyncChunkManager::~AsyncChunkManager();
+	AsyncChunkWorker::~AsyncChunkWorker();
 
 public:
 	void RequestTask(SharedPtr<class Chunk> chunk);
 	void Start();
+
 private:
 	void DoWork();
 
 private:
 	std::queue<SharedPtr<class Chunk>> requestedTasks;
 	std::thread workThread;
-	std::atomic_bool shouldWork{ true };
 	std::mutex requestingTask;
+	std::atomic_bool shouldWork{ true };
 };
 
+
+class AsyncChunkManager
+{
+public:
+	void RequestTask(SharedPtr<class Chunk> chunk);
+	void Start(int numOfWorkers = 4);
+
+private:
+	int lastJobIndex = 0;
+	std::vector<SharedPtr<AsyncChunkWorker>> workers;
+};
