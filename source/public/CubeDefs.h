@@ -5,7 +5,7 @@
 #include <string>
 #include "CubeDef.h"
 
-enum CubeID
+enum CubeID : uint16_t
 {
 	Air = 0,
 	Stone = 1,

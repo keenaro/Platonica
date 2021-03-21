@@ -19,7 +19,7 @@ public:
 	}
 
 public:
-	World(int inRegionLength = 16);
+	World(int inRegionLength = 8);
 
 public:
 	int GetRegionLength() const { return regionLength; };
@@ -39,6 +39,11 @@ public:
 	bool DidPlayerMoveChunk() const { return playerMovedChunk; };
 
 	SharedPtr<PerlinNoise> GetPerlinNoiseGenerator() const { return perlin; };
+	
+	String GetWorldDirectory() const { return "Worlds/" + worldName; };
+	String GetWorldChunkDataDirectory() const { return "Worlds/" + worldName + "/Chunks/"; }
+	SharedPtr<AsyncChunkManager> GetChunkManager() const { return chunkManager; };
+
 private:
 	void DrawRegions() const;
 	void UpdateRegions(float deltaTime);
@@ -52,18 +57,21 @@ private:
 	void UpdatePlayerHasMovedChunk();
 
 	void UpdateGUI();
+
+	void InitialiseSaveDirectories();
 private:
 	int regionLength;
 	SharedIVec3Map<ChunkRegion> regions;
 	SharedPtr<Player> player;
-	AsyncChunkManager chunkManager;
+	SharedPtr<AsyncChunkManager> chunkManager;
 	SharedPtr<PerlinNoise> perlin;
 	glm::ivec3 cachedPlayerChunkPosition;
 	bool playerMovedChunk = false;
 
 private:
 	int renderDistance = 8;
-	float sphericalFalloff = 0.05f;
+	float sphericalFalloff = 0.005f;
+	String worldName = "World";
 
 public:
 	World(World const&) = delete;

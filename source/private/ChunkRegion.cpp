@@ -7,6 +7,20 @@ ChunkRegion::ChunkRegion(const glm::ivec3& inPosition) : RenderObject(false), Po
 	shader = World::Instance().GetShader();
 }
 
+ChunkRegion::~ChunkRegion()
+{
+	const World& world = World::Instance();
+	const SharedPtr<AsyncChunkManager> chunkManager = world.GetChunkManager();
+
+	for (auto& it : chunks)
+	{
+		if (SharedPtr<Chunk> chunk = it.second)
+		{
+			chunkManager->RequestTask(chunk, TaskType::Save);
+		}
+	}
+}
+
 void ChunkRegion::Draw()
 {
 	RenderObject::Draw();
@@ -45,6 +59,7 @@ glm::ivec3 ChunkRegion::GetWorldPosition() const
 void ChunkRegion::RemoveOutOfDistanceChunks()
 {
 	const World& world = World::Instance();
+	SharedPtr<AsyncChunkManager> chunkManager = world.GetChunkManager();
 	const glm::vec3 playerPos = world.GetPlayer()->GetPosition();
 	const int offloadDistance = world.GetOffloadDistance();
 
@@ -52,6 +67,7 @@ void ChunkRegion::RemoveOutOfDistanceChunks()
 	{
 		if (!it->second || glm::distance(glm::vec3(GetChunkWorldPosition(it->second)), playerPos) > offloadDistance)
 		{
+			if(it->second) chunkManager->RequestTask(it->second, TaskType::Save);
 			chunks.erase(it++);
 		}
 		else

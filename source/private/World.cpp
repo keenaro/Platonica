@@ -5,6 +5,7 @@
 #include "PerlinNoise.h"
 #include "Defs.h"
 #include "MathFunctions.h"
+#include <direct.h>
 
 World::World(int inRegionLength) : RenderObject(true), UpdateObject(true)
 {
@@ -13,7 +14,8 @@ World::World(int inRegionLength) : RenderObject(true), UpdateObject(true)
 	player = MakeShared<Player>();
 	perlin = MakeShared<PerlinNoise>();
 	LoadTexture("textures/atlas.png");
-	chunkManager.Start();
+	InitialiseSaveDirectories();
+	chunkManager = MakeShared<AsyncChunkManager>(4);
 }
 
 void World::Draw() 
@@ -104,7 +106,7 @@ void World::TryRequestChunks()
 						{
 							DPrintf("Requesting chunk at Region(%s) Chunk(%s)\n", glm::to_string(regionPosition).c_str(), glm::to_string(chunkPosition).c_str());
 							chunk = MakeShared<Chunk>(chunkPosition);
-							chunkManager.RequestTask(chunk);
+							chunkManager->RequestTask(chunk, TaskType::Generate);
 						}
 
 						region->InsertChunk(chunk);
@@ -177,7 +179,7 @@ void World::UpdateGUI()
 	ImGui::Text("Region Position: %s", glm::to_string(regionPosition).c_str());
 
 	ImGui::PushItemWidth(100);
-	ImGui::SliderFloat("World Spherical Falloff", &sphericalFalloff, 0.0f, 0.5f);
+	ImGui::SliderFloat("World Spherical Falloff", &sphericalFalloff, 0.0f, 0.1f);
 	ImGui::SliderInt("Render Distance", &renderDistance, 2, 30);
 	ImGui::Text("Region Count: %i", regions.size());
 	
@@ -279,4 +281,11 @@ void World::GetBlockWorldPosition(const glm::vec3& position, glm::ivec3& outBloc
 	const glm::ivec3 blockWorldPos = flooredPos - regionWorldPosition;
 	const glm::ivec3 chunkWorldPos = RoundDownToMultiple(blockWorldPos, CHUNK_LENGTH);
 	outBlockWorldPosition = blockWorldPos - chunkWorldPos;
+}
+
+void World::InitialiseSaveDirectories()
+{
+	_mkdir("Worlds");
+	_mkdir(GetWorldDirectory().c_str());
+	_mkdir(GetWorldChunkDataDirectory().c_str());
 }

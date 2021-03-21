@@ -14,7 +14,9 @@ public:
 	void Draw() override;
 	bool ShouldDraw(const glm::ivec3& chunkRegionWorldPosition) const;
 
+	void SaveChunkData();
 	void GenerateChunkData();
+	bool TryLoadChunkData();
 	glm::ivec3 GetWorldPosition() const { return position * CHUNK_LENGTH; };
 	glm::ivec3 GetWorldCentrePosition() const { return position * CHUNK_LENGTH + glm::ivec3(CHUNK_LENGTH / 2); }
 

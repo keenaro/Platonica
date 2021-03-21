@@ -76,8 +76,8 @@ void main()
 	TexCoord = startTexCoord + xTexCoord + yTexCoord + zTexCoord + xTexCoordFlipped + yTexCoordFlipped + zTexCoordFlipped;
 
 	vec3 worldSpacePosition = position + vertPos + ChunkPosition + RegionPosition;
-	float fallOffAmount = distance(vec2(CameraPosition.x, CameraPosition.z), vec2(worldSpacePosition.x, worldSpacePosition.z)) * SphericalWorldFalloff;
-	worldSpacePosition -= vec3(0.0, fallOffAmount*fallOffAmount, 0.0);
+	float fallOffAmount = distance(vec2(CameraPosition.x, CameraPosition.z), vec2(worldSpacePosition.x, worldSpacePosition.z));
+	worldSpacePosition -= vec3(0.0, pow(fallOffAmount,2)*SphericalWorldFalloff, 0.0);
 
 	vec4 ViewPosition = ViewWorldXform * vec4(worldSpacePosition, 1.0);
 

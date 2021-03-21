@@ -9,20 +9,35 @@
 
 class Chunk;
 
+enum TaskType 
+{
+	Generate,
+	Save
+};
+
+struct ChunkJob
+{
+public:
+	ChunkJob(SharedPtr<Chunk> newChunk, TaskType newTaskType) : chunk(newChunk), taskType(newTaskType) {};
+	SharedPtr<Chunk> chunk;
+	TaskType taskType;
+};
+
+
 class AsyncChunkWorker
 {
 public:
 	AsyncChunkWorker::~AsyncChunkWorker();
 
 public:
-	void RequestTask(SharedPtr<class Chunk> chunk);
+	void RequestTask(const SharedPtr<ChunkJob> chunkJob);
 	void Start();
 
 private:
 	void DoWork();
 
 private:
-	std::queue<SharedPtr<class Chunk>> requestedTasks;
+	std::queue<SharedPtr<ChunkJob>> requestedTasks;
 	std::thread workThread;
 	std::mutex requestingTask;
 	std::atomic_bool shouldWork{ true };
@@ -32,8 +47,8 @@ private:
 class AsyncChunkManager
 {
 public:
-	void RequestTask(SharedPtr<class Chunk> chunk);
-	void Start(int numOfWorkers = 4);
+	void RequestTask(const SharedPtr<Chunk> chunk, const TaskType& taskType);
+	AsyncChunkManager(int numOfWorkers = 4);
 
 private:
 	int lastJobIndex = 0;

@@ -6,8 +6,10 @@
 
 class ChunkRegion : public RenderObject, public Position<glm::ivec3>, public UpdateObject
 {
+
 public:
 	ChunkRegion(const glm::ivec3& inPosition = glm::ivec3(0));
+	~ChunkRegion();
 
 	void Draw() override;
 	void Update(float deltaTime) override;

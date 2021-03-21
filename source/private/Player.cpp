@@ -104,5 +104,7 @@ void Player::UpdateGUI()
 	ImGui::Text("Position: %s", glm::to_string(position).c_str());
 	ImGui::Text("Rotation: %s", glm::to_string(GetDirection()).c_str());
 
+	ImGui::Text("Right Direction: %s", glm::to_string(GetRightDirection()).c_str());
+
 	ImGui::End();
 }

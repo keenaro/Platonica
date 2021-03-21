@@ -4,6 +4,7 @@
 #include <random>
 #include "Player.h"
 #include "Defs.h"
+#include <fstream>
 
 Chunk::Chunk(const glm::ivec3& inPosition) : VertexRenderObject(false), Position(inPosition)
 {
@@ -254,39 +255,114 @@ void Chunk::GenerateChunkData()
 	loaded = true;
 }
 
+bool Chunk::TryLoadChunkData()
+{
+	const String chunkDataDirectory = World::Instance().GetWorldChunkDataDirectory();
+	const String filename = chunkDataDirectory + std::to_string(position.x) + "_" + std::to_string(position.y) + "_" + std::to_string(position.z) + ".cd";
+	std::ifstream file(filename.c_str(), std::ios::in | std::ios::binary);
+	if (file.is_open())
+	{
+		const glm::vec3 WSChunkPosition = position * CHUNK_LENGTH;
+		for (int z = 0; z < CHUNK_LENGTH; z++)
+		{
+			for (int x = 0; x < CHUNK_LENGTH; x++)
+			{
+				for (int y = 0; y < CHUNK_LENGTH; y++)
+				{
+					data[x][y][z].SetID(GetCubeIdAtPosition(WSChunkPosition + glm::vec3(x, y, z)));
+				}
+			}
+		}
+
+		while(!file.eof())
+		{
+			char d0, d1, d2, d3;
+			file.get(d0);
+			file.get(d1);
+			file.get(d2);
+			file.get(d3);
+
+			data[d0 & 15][d1 >> 4][d1 & 15] = CubeID((uint32_t(d2) << 16) + uint32_t(d3));
+
+		}
+
+		UpdateAllFaces();
+		loaded = true;
+		return true;
+	}
+
+	return false;
+}
+
+void Chunk::SaveChunkData()
+{
+	const String chunkDataDirectory = World::Instance().GetWorldChunkDataDirectory();
+	const String filename = chunkDataDirectory + std::to_string(position.x) + "_" + std::to_string(position.y) + "_" + std::to_string(position.z) + ".cd";
+	std::fstream file;
+
+	const glm::vec3 WSChunkPosition = position * CHUNK_LENGTH;
+
+	for (int z = 0; z < CHUNK_LENGTH; z++)
+	{
+		for (int x = 0; x < CHUNK_LENGTH; x++)
+		{
+			for (int y = 0; y < CHUNK_LENGTH; y++)
+			{
+				if(GetCubeIdAtPosition(WSChunkPosition + glm::vec3(x, y, z)) != data[x][y][z].GetID())
+				{
+					if (!file.is_open()) {
+						file = std::fstream(filename, std::ios::out | std::ios::binary | std::ios::trunc);
+					}
+
+					CubeID cubeId = data[x][y][z].GetID();
+					file << uint8_t(x & 15) << uint8_t((y << 4) + z) << uint8_t(cubeId >> 16) << uint8_t(cubeId & 15);
+				}
+			}
+		}
+	}
+
+	if (file.is_open())
+	{
+		file.close();
+	}
+}
+
 CubeID Chunk::GetCubeIdAtPosition(const glm::vec3& cubePosition)
 {
 	const World& world = World::Instance();
 
 	const unsigned int baseHeight = 20;
-	const float inclineMultiplier = 30.0f;
+	const float inclineMultiplier = 40.0f;
 	const int regionLength = world.GetRegionLength();
 	const glm::vec3 wrappedPosition = world.TranslateIntoWrappedWorld(cubePosition);
 	const int caveFreq = 16;
 	const int caveThreshold = 10;
+	const int waterHeight = baseHeight - 15;
 
 	CubeID id = Air;
 
 	if (const SharedPtr<PerlinNoise> perlinGenerator = world.GetPerlinNoiseGenerator())
 	{
-		const glm::vec3 noisePosition = glm::vec3(wrappedPosition.x, wrappedPosition.z, 0) / CHUNK_LENGTH;
+		const float biomeFrequency = 4.f;
+		const float biomeMinFrequency = glm::min((float)regionLength, biomeFrequency > 0 ? 1 << int(biomeFrequency) : biomeFrequency);
+		const float biomeNoise = perlinGenerator->PNoise(glm::vec3(wrappedPosition.x / CHUNK_LENGTH, wrappedPosition.z / CHUNK_LENGTH, 0.0f) / biomeMinFrequency, glm::vec3(regionLength, regionLength, biomeMinFrequency) / biomeMinFrequency) * 10.f;
 
-		const int frequency = 2;
-		const float minFrequency = glm::min(regionLength, frequency * 2);
+		const float frequency = 3.f;
+		const float minFrequency = glm::min((float)regionLength, frequency > 0 ? 1 << int(frequency) : frequency);
 
 		const float pNoise = perlinGenerator->PNoise(glm::vec3(wrappedPosition.x / CHUNK_LENGTH, wrappedPosition.z / CHUNK_LENGTH, 0.0f) / minFrequency, glm::vec3(regionLength, regionLength, minFrequency) / minFrequency);
-		const int noise = pNoise * inclineMultiplier + baseHeight;
+		const int terrainHeight = pNoise * inclineMultiplier * biomeNoise + baseHeight;
 
-		if (wrappedPosition.y < noise)
+		if (wrappedPosition.y < terrainHeight)
 		{
-			const float caveInclineMultiplier = noise + abs(wrappedPosition.y) * 0.01f;
+			const float caveInclineMultiplier = terrainHeight + abs(wrappedPosition.y) * 0.01f;
 			const float testNoise = perlinGenerator->PNoise(glm::vec3(wrappedPosition.x / CHUNK_LENGTH, wrappedPosition.z / CHUNK_LENGTH, wrappedPosition.y / CHUNK_LENGTH), glm::ivec3(regionLength, regionLength, 10000.0f));
 			const int tnoise = testNoise * caveInclineMultiplier;
 			if (tnoise > caveThreshold) {
 				id = Air;
 			}
 			else {
-				id = wrappedPosition.y + 1 == noise ? Grass : wrappedPosition.y + 5 > noise ? Dirt : Stone;
+				id = wrappedPosition.y + 1 == terrainHeight ? Grass : wrappedPosition.y + 5 > terrainHeight ? Dirt : Stone;
 			}
 		}
 	}
