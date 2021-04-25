@@ -5,8 +5,8 @@
 #include "Window.h"
 #include "Defs.h"
 #include <algorithm>
-#include "World.h"
 #include "Player.h"
+#include "World.h"
 
 void Window::WindowLoop()
 {
@@ -23,6 +23,8 @@ void Window::WindowLoop()
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
+
+		glfwMakeContextCurrent(window);
 
 		for(UpdateObject* object : objectsToUpdate)
 		{
@@ -57,7 +59,6 @@ void Window::WindowLoop()
 	ImGui::DestroyContext();
 
 	glfwTerminate();
-	exit(EXIT_SUCCESS);
 }
 
 Window::Window()

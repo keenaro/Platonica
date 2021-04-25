@@ -1,11 +1,11 @@
 #pragma once
 #include <deque>
 #include <queue>
-#include "Defs.h"
 #include <glm/vec3.hpp>
 #include <Thread>
 #include <atomic>
 #include <mutex>
+#include "Defs.h"
 
 class Chunk;
 
@@ -15,24 +15,51 @@ enum TaskType
 	Save
 };
 
-struct ChunkJob
+class ChunkJob
 {
 public:
-	ChunkJob(SharedPtr<Chunk> newChunk, TaskType newTaskType) : chunk(newChunk), taskType(newTaskType) {};
+	ChunkJob(SharedPtr<Chunk> newChunk) : chunk(newChunk) {};
+	virtual void StartJob() = 0;
+	virtual bool IsJobValid() const { return true; };
+
+protected:
 	SharedPtr<Chunk> chunk;
-	TaskType taskType;
+
+};
+
+class GenerateJob : public ChunkJob
+{
+public:
+	GenerateJob(SharedPtr<Chunk> newChunk) : ChunkJob(newChunk) {};
+	void StartJob() override;
+};
+
+class SaveJob : public ChunkJob
+{
+public:
+	SaveJob(SharedPtr<Chunk> newChunk) : ChunkJob(newChunk) {};
+	void StartJob() override;
+	bool IsJobValid() const override;
+};
+
+class ClientGenerateJob : public ChunkJob
+{
+public:
+	ClientGenerateJob(SharedPtr<Chunk> newChunk, const std::vector<ChunkBlockData>& receivedData) : ChunkJob(newChunk), chunkData(receivedData) {};
+
+	void StartJob() override;
+
+protected:
+	std::vector<ChunkBlockData> chunkData;
 };
 
 
 class AsyncChunkWorker
 {
 public:
-	AsyncChunkWorker::~AsyncChunkWorker();
-
-public:
 	void RequestTask(const SharedPtr<ChunkJob> chunkJob);
 	void Start();
-
+	bool TryExit();
 private:
 	void DoWork();
 
@@ -47,8 +74,9 @@ private:
 class AsyncChunkManager
 {
 public:
-	void RequestTask(const SharedPtr<Chunk> chunk, const TaskType& taskType);
+	void RequestTask(SharedPtr<ChunkJob> chunkJob);
 	AsyncChunkManager(int numOfWorkers = 4);
+	void Exit();
 
 private:
 	int lastJobIndex = 0;

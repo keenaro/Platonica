@@ -5,6 +5,17 @@
 
 #define CHUNK_LENGTH 16
 
+struct ChunkBlockData
+{
+public:
+	uint16_t blockPosition;
+	CubeID blockId;
+
+	ChunkBlockData() {};
+	ChunkBlockData(const glm::ivec3& position, const CubeID id) : blockId(id) { blockPosition = uint16_t((position.x << 8) + (position.y << 4) + position.z); };
+	glm::ivec3 GetPosition() const { return glm::ivec3((blockPosition >> 8) & 15, (blockPosition >> 4) & 15, blockPosition & 15); };
+};
+
 class Chunk : public VertexRenderObject, public Position<glm::ivec3>
 {
 public:
@@ -15,8 +26,7 @@ public:
 	bool ShouldDraw(const glm::ivec3& chunkRegionWorldPosition) const;
 
 	void SaveChunkData();
-	void GenerateChunkData();
-	bool TryLoadChunkData();
+	void GenerateChunkData(const ChunkBlockData* extraChunkData = nullptr, const int extraChunkLength = 0);
 	glm::ivec3 GetWorldPosition() const { return position * CHUNK_LENGTH; };
 	glm::ivec3 GetWorldCentrePosition() const { return position * CHUNK_LENGTH + glm::ivec3(CHUNK_LENGTH / 2); }
 
@@ -26,6 +36,8 @@ public:
 	bool IsLoaded() const { return loaded; };
 
 	static CubeID GetCubeIdAtPosition(const glm::vec3& position);
+
+	bool ShouldTrySave() const { return shouldTrySave; };
 
 private:
 	void GenerateBuffers();
@@ -39,11 +51,12 @@ private:
 	void SetVertexAttributePointer() override;
 	void SetShaderUniformValues() override;
 	bool IsPositionInsideChunk(const glm::ivec3& position) const;
-
+	void TryLoadChunkData();
+	CubeID GetBlockFromSave(const glm::ivec3& chunkPosition, const glm::ivec3& blockPosition);
 
 private:
 	bool dirty = true;
 	Cube data[CHUNK_LENGTH][CHUNK_LENGTH][CHUNK_LENGTH];
 	bool loaded = false;
-
+	bool shouldTrySave = false;
 };

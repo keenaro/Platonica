@@ -2,6 +2,7 @@
 #include "GLFW/glfw3.h"
 #include "World.h"
 #include "Window.h"
+#include "GameManager.h"
 
 Player::Player(Camera& camera) : Camera(camera), UpdateObject(false)
 {
@@ -35,6 +36,8 @@ void Player::ProcessJoystick(float deltaTime)
 	const unsigned char* buttons = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &count);
 	if (count)
 	{
+		auto world = GameManager::Instance().GetWorld();
+
 		if (buttons[GLFW_GAMEPAD_BUTTON_LEFT_THUMB] == GLFW_PRESS)
 		{
 			Move(glm::vec3(0, 1, 0) * GetMovementSpeed().y * deltaTime);
@@ -54,7 +57,7 @@ void Player::ProcessJoystick(float deltaTime)
 		{
 			if (!holdingA)
 			{
-				World::Instance().PlaceBlockFromPositionInDirection(GetPosition(), GetDirection(), GetReach(), CubeID::Stone);
+				world->PlaceBlockFromPositionInDirection(GetPosition(), GetDirection(), GetReach(), CubeID::Stone);
 			}
 			holdingA = true;
 		}
@@ -65,7 +68,7 @@ void Player::ProcessJoystick(float deltaTime)
 		{
 			if (!holdingX)
 			{
-				World::Instance().PlaceBlockFromPositionInDirection(GetPosition(), GetDirection(), GetReach(), CubeID::Air, true);
+				world->PlaceBlockFromPositionInDirection(GetPosition(), GetDirection(), GetReach(), CubeID::Air, true);
 			}
 			holdingX = true;
 		}

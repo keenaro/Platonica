@@ -1,5 +1,4 @@
 #pragma once
-#include "ShaderHelper.h"
 #include <vector>
 
 class UpdateObject

@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
 project(Platonica)
-
 option(GLFW_BUILD_DOCS OFF)
 option(GLFW_BUILD_EXAMPLES OFF)
 option(GLFW_BUILD_TESTS OFF)
@@ -28,7 +27,8 @@ include_directories(source/public/
                     externals/glfw/include/
                     externals/glm/
                     externals/stb/
-					externals/imgui/)
+					externals/imgui/
+					externals/enet)
 
 file(GLOB EXTERNALS_SOURCES externals/glad/src/glad.c externals/imgui/*.cpp)
 file(GLOB PROJECT_HEADERS source/public/*.h)
@@ -55,9 +55,12 @@ add_executable(${PROJECT_NAME} ${PROJECT_SOURCES} ${PROJECT_HEADERS}
                                ${EXTERNALS_SOURCES})
 target_link_libraries(${PROJECT_NAME} glfw
                       ${GLFW_LIBRARIES} ${GLAD_LIBRARIES}
-                      BulletDynamics BulletCollision LinearMath)
+                      BulletDynamics BulletCollision LinearMath ws2_32 winmm)
+					  
 set_target_properties(${PROJECT_NAME} PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${PROJECT_NAME})
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${PROJECT_NAME} 
+	CXX_STANDARD 17
+	CXX_STANDARD_REQUIRED ON)
 
 add_custom_command(
     TARGET ${PROJECT_NAME} POST_BUILD

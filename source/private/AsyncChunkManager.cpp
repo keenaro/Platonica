@@ -1,6 +1,34 @@
-#include "AsyncChunkManager.h"
 #include "World.h"
+#include "AsyncChunkManager.h"
 #include "ChunkRegion.h"
+#include "GameManager.h"
+
+void GenerateJob::StartJob()
+{
+	if (chunk.use_count() > 1)
+	{
+		chunk->GenerateChunkData();
+	}
+}
+
+void SaveJob::StartJob()
+{
+	chunk->SaveChunkData();
+}
+
+bool SaveJob::IsJobValid() const
+{
+	return chunk->IsLoaded() && GameManager::Instance().GetWorld()->IsHostWorld();
+}
+
+void ClientGenerateJob::StartJob()
+{
+	if (chunk.use_count() > 1)
+	{
+		const int dataSize = chunkData.size();
+		chunk->GenerateChunkData(dataSize ? &chunkData.front() : nullptr, dataSize);
+	}
+}
 
 AsyncChunkManager::AsyncChunkManager(int numOfWorkers)
 {
@@ -12,24 +40,45 @@ AsyncChunkManager::AsyncChunkManager(int numOfWorkers)
 	}
 }
 
-AsyncChunkWorker::~AsyncChunkWorker()
+void AsyncChunkManager::Exit()
 {
-	shouldWork = false;
-	workThread.join();
+	bool canExit = false;
+	while (!canExit)
+	{
+		canExit = true;
+		for (int i = 0; i < workers.size(); i++)
+		{
+			if(!workers[i]->TryExit())
+			{
+				canExit = false;
+			}
+		}
+	}
 }
 
-void AsyncChunkManager::RequestTask(const SharedPtr<Chunk> chunk, const TaskType& taskType)
+bool AsyncChunkWorker::TryExit()
+{	
+	if(!requestedTasks.size())
+	{
+		shouldWork = false;
+		if (workThread.joinable()) workThread.join();
+
+		return true;
+	}
+
+	return false;
+}
+
+
+void AsyncChunkManager::RequestTask(SharedPtr<ChunkJob> chunkJob)
 {
 	if (workers.size() > 0)
 	{
-		if (taskType == TaskType::Save && !chunk->IsLoaded())
+		if (chunkJob->IsJobValid())
 		{
-			DPrint("Trying to save chunk that has not been loaded yet. Skipping.");
-			return;
+			workers[lastJobIndex]->RequestTask(chunkJob);
+			if (++lastJobIndex > workers.size() - 1) lastJobIndex = 0;
 		}
-
-		workers[lastJobIndex]->RequestTask(MakeShared<ChunkJob>(chunk, taskType));
-		if (++lastJobIndex > workers.size() - 1) lastJobIndex = 0;
 	}
 	else
 	{
@@ -56,25 +105,11 @@ void AsyncChunkWorker::DoWork()
 		if (!requestedTasks.empty())
 		{
 			while (!requestingTask.try_lock()) {}
-			SharedPtr<ChunkJob> currentChunkTask = requestedTasks.front();
+			SharedPtr<ChunkJob> currentChunkJob = requestedTasks.front();
 			requestedTasks.pop();
 			requestingTask.unlock();
 
-			switch(currentChunkTask->taskType)
-			{
-				case Generate: 
-					if (currentChunkTask->chunk.use_count() > 1)
-					{
-						if (!currentChunkTask->chunk->TryLoadChunkData())
-						{
-							currentChunkTask->chunk->GenerateChunkData();
-						}
-					}
-					break;
-				case Save:
-					currentChunkTask->chunk->SaveChunkData();
-					break;
-			}
+			currentChunkJob->StartJob();
 		}
 		else
 		{

@@ -1,15 +1,15 @@
+#define ENET_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
+
+#include "Defs.h"
+#include "GameManager.h"
 #include "Window.h"
 #include "TestObjects.h"
-#include "CubeDefs.h"
-#include "World.h"
-
 
 int main()
 {
     Window& window = Window::Instance();
-	CubeDefs& cubeDefs = CubeDefs::Instance();
-	World& world = World::Instance();
-	
+	GameManager& gameManager = GameManager::Instance();
 	window.WindowLoop();
+	gameManager.Exit();
 }

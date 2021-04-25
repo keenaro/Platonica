@@ -17,8 +17,9 @@ protected:
 	virtual void SetShaderUniformValues() {};
 	void LoadTexture(const std::string& textureName, int textureNum = 0);
 
-protected:
+public:
 	SharedPtr<Shader> shader;
+	GLuint texture = 0;
 };
 
 class VertexRenderObject : public RenderObject

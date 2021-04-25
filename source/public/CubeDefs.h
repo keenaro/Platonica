@@ -16,11 +16,7 @@ enum CubeID : uint16_t
 class CubeDefs
 {
 public:
-	static CubeDefs& Instance()
-	{
-		static CubeDefs instance;
-		return instance;
-	}
+	CubeDefs();
 
 public:
 	const CubeDef& GetCubeDef(CubeID cubeID) const;
@@ -29,12 +25,6 @@ public:
 private:
 	std::map<CubeID, CubeDef> cubeEntries;
 
-	CubeDefs();
 	void RegisterCubeDef(CubeID cubeID, std::string& cubeName, glm::ivec2& allFaceTexCoord);
 	void RegisterCubeDef(CubeID cubeID, std::string& cubeName, glm::ivec2& topFaceTexCoord, glm::ivec2& bottomFaceTexCoord, glm::ivec2& leftFaceTexCoord, glm::ivec2& rightFaceTexCoord, glm::ivec2& frontFaceTexCoord, glm::ivec2& backFaceTexCoord);
-
-
-public:
-	CubeDefs(CubeDefs const&) = delete;
-	void operator=(CubeDefs const&) = delete;
 };

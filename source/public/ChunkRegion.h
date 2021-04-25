@@ -9,7 +9,6 @@ class ChunkRegion : public RenderObject, public Position<glm::ivec3>, public Upd
 
 public:
 	ChunkRegion(const glm::ivec3& inPosition = glm::ivec3(0));
-	~ChunkRegion();
 
 	void Draw() override;
 	void Update(float deltaTime) override;
@@ -31,7 +30,8 @@ private:
 	void DrawChunks() const;
 	void SetShaderUniformValues() override;
 
-private:
+public:
 	SharedIVec3Map<Chunk> chunks;
+
 };
 

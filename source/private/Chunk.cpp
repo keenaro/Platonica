@@ -5,18 +5,19 @@
 #include "Player.h"
 #include "Defs.h"
 #include <fstream>
+#include "GameManager.h"
 
 Chunk::Chunk(const glm::ivec3& inPosition) : VertexRenderObject(false), Position(inPosition)
 {
 	dirty = true;
-	shader = World::Instance().GetShader();
+	shader = GameManager::Instance().GetWorld()->GetShader();
 }
 
 bool Chunk::ShouldDraw(const glm::ivec3& chunkRegionWorldPosition) const
 {
-	const World& world = World::Instance();
-	const float renderDistance = world.GetRenderDistance();
-	const SharedPtr<Player> player = world.GetPlayer();
+	const SharedPtr<World> world = GameManager::Instance().GetWorld();
+	const float renderDistance = world->GetRenderDistance();
+	const SharedPtr<Player> player = world->GetPlayer();
 	const glm::vec3& cameraPosition = player->GetPosition();
 	const glm::vec3& cameraDirection = player->GetDirection();
 	const glm::vec3& chunkWorldPosition = GetWorldCentrePosition() + chunkRegionWorldPosition;
@@ -87,26 +88,43 @@ void Chunk::UpdateCubeFaces(const glm::ivec3& cubePosition)
 	Cube& cube = data[cubePosition.x][cubePosition.y][cubePosition.z];
 	cube.SetFaceData(CubeFace::All);
 
-	const CubeDefs& cubeDefs =  CubeDefs::Instance();
+	const SharedPtr<CubeDefs> cubeDefs = GameManager::Instance().GetCubeDefs();
+	const SharedPtr<World> world = GameManager::Instance().GetWorld();
+	const glm::ivec3 cp = position * CHUNK_LENGTH;
 
-	const glm::vec3 cp = position * CHUNK_LENGTH;
+	const auto shouldCull = [this, &world, &cubeDefs, &cubePosition, &cp](glm::ivec3& offset) 
+	{
+		const auto offsetPosition = cubePosition + offset;
+		if (IsPositionInsideChunk(offsetPosition))
+			return GetBlock(offsetPosition).CanSee();
 
-	if (cubePosition.y > 0 ? data[cubePosition.x][cubePosition.y - 1][cubePosition.z].CanSee() : cubeDefs.ShouldAffectCull(GetCubeIdAtPosition(cp + glm::vec3(cubePosition.x, cubePosition.y - 1, cubePosition.z))))
+		//#TODO This code can be used for neighboring chunk culling, but requires a rework in order to make the chunk container thread safe.
+		//else if (auto chunk = world->FindChunk(position + offset))
+		//{
+		//	auto blockPosition = (offsetPosition + CHUNK_LENGTH * (abs(offsetPosition / CHUNK_LENGTH) + 1)) % CHUNK_LENGTH;
+		//	return chunk->GetBlock(blockPosition).CanSee();
+		//}
+		//return cubeDefs->ShouldAffectCull(GetCubeIdAtPosition(cp + offsetPosition));
+
+		return false;
+	};
+
+	if (shouldCull(glm::ivec3(0,-1,0)))
 		cube.CullFace(CubeFace::Bottom);
 
-	if (cubePosition.y < CHUNK_LENGTH - 1 ? data[cubePosition.x][cubePosition.y + 1][cubePosition.z].CanSee() : cubeDefs.ShouldAffectCull(GetCubeIdAtPosition(cp + glm::vec3(cubePosition.x, cubePosition.y + 1, cubePosition.z))))
+	if (shouldCull(glm::ivec3(0, 1, 0)))
 		cube.CullFace(CubeFace::Top);
 
-	if (cubePosition.x > 0 ? data[cubePosition.x - 1][cubePosition.y][cubePosition.z].CanSee() : cubeDefs.ShouldAffectCull(GetCubeIdAtPosition(cp + glm::vec3(cubePosition.x - 1, cubePosition.y, cubePosition.z))))
+	if (shouldCull(glm::ivec3(-1, 0, 0)))
 		cube.CullFace(CubeFace::Right);
 
-	if (cubePosition.x < CHUNK_LENGTH - 1 ? data[cubePosition.x + 1][cubePosition.y][cubePosition.z].CanSee() : cubeDefs.ShouldAffectCull(GetCubeIdAtPosition(cp + glm::vec3(cubePosition.x + 1, cubePosition.y, cubePosition.z))))
+	if (shouldCull(glm::ivec3(1, 0, 0)))
 		cube.CullFace(CubeFace::Left);
 
-	if (cubePosition.z > 0 ? data[cubePosition.x][cubePosition.y][cubePosition.z - 1].CanSee() : cubeDefs.ShouldAffectCull(GetCubeIdAtPosition(cp + glm::vec3(cubePosition.x, cubePosition.y, cubePosition.z - 1))))
+	if (shouldCull(glm::ivec3(0, 0, -1)))
 		cube.CullFace(CubeFace::Back);
 
-	if (cubePosition.z < CHUNK_LENGTH - 1 ? data[cubePosition.x][cubePosition.y][cubePosition.z + 1].CanSee() : cubeDefs.ShouldAffectCull(GetCubeIdAtPosition(cp + glm::vec3(cubePosition.x, cubePosition.y, cubePosition.z + 1))))
+	if (shouldCull(glm::ivec3(0, 0, 1)))
 		cube.CullFace(CubeFace::Front);
 }
 
@@ -227,8 +245,8 @@ int32_t Chunk::GetCubeVertexData(const CubeID cubeID, const glm::ivec3& vertexPo
 	const int32_t vposZ = (vertexPosition.z & 1) << 13;
 
 	//Texture Coordinates
-	const CubeDefs& cubeDefs = CubeDefs::Instance();
-	const CubeDef& cubeDef = cubeDefs.GetCubeDef(cubeID);
+	const SharedPtr<CubeDefs> cubeDefs = GameManager::Instance().GetCubeDefs();
+	const CubeDef& cubeDef = cubeDefs->GetCubeDef(cubeID);
 	const int32_t texCoord = cubeDef.GetTextureCoordinatesFromNormal(normal);
 
 	const int32_t data = sign + normalX + normalY + normalZ + posX + posY + posZ + vposX + vposY + vposZ + texCoord;
@@ -236,7 +254,7 @@ int32_t Chunk::GetCubeVertexData(const CubeID cubeID, const glm::ivec3& vertexPo
 	return data;
 }
 
-void Chunk::GenerateChunkData()
+void Chunk::GenerateChunkData(const ChunkBlockData* extraChunkData, const int extraChunkLength)
 { 
 	const glm::vec3 WSChunkPosition = position * CHUNK_LENGTH;
 
@@ -251,97 +269,108 @@ void Chunk::GenerateChunkData()
 		}
 	}
 
+	TryLoadChunkData();
+
+	if (extraChunkData)
+	{
+		const ChunkBlockData* chunkData = extraChunkData;
+		for(int pos = 0; pos < extraChunkLength; pos++)
+		{
+			const auto blockPos = chunkData->GetPosition();
+			data[blockPos.x][blockPos.y][blockPos.z] = chunkData->blockId;
+			chunkData++;
+		}
+
+	}
+
 	UpdateAllFaces();
 	loaded = true;
 }
 
-bool Chunk::TryLoadChunkData()
+void Chunk::TryLoadChunkData()
 {
-	const String chunkDataDirectory = World::Instance().GetWorldChunkDataDirectory();
-	const String filename = chunkDataDirectory + std::to_string(position.x) + "_" + std::to_string(position.y) + "_" + std::to_string(position.z) + ".cd";
+	if (GameManager::Instance().GetWorld()->IsHostWorld())
+	{
+		const String filename = GameManager::Instance().GetWorld()->GetChunkDataFile(position);
+		std::ifstream file(filename.c_str(), std::ios::in | std::ios::binary);
+		if (file.is_open())
+		{
+			while (!file.eof())
+			{
+				ChunkBlockData blockData;
+				file.read((char*)&blockData, sizeof(ChunkBlockData));
+				const auto blockPos = blockData.GetPosition();
+				data[blockPos.x][blockPos.y][blockPos.z] = blockData.blockId;
+			}
+		}
+	}
+}
+
+CubeID Chunk::GetBlockFromSave(const glm::ivec3& chunkPosition, const glm::ivec3& blockPosition)
+{
+	const String filename = GameManager::Instance().GetWorld()->GetChunkDataFile(position);
 	std::ifstream file(filename.c_str(), std::ios::in | std::ios::binary);
 	if (file.is_open())
 	{
-		const glm::vec3 WSChunkPosition = position * CHUNK_LENGTH;
-		for (int z = 0; z < CHUNK_LENGTH; z++)
+		while (!file.eof())
 		{
-			for (int x = 0; x < CHUNK_LENGTH; x++)
-			{
-				for (int y = 0; y < CHUNK_LENGTH; y++)
-				{
-					data[x][y][z].SetID(GetCubeIdAtPosition(WSChunkPosition + glm::vec3(x, y, z)));
-				}
-			}
+			ChunkBlockData blockData;
+			file.read((char*)&blockData, sizeof(ChunkBlockData));
+			if (blockPosition == blockData.GetPosition()) return blockData.blockId;
 		}
-
-		while(!file.eof())
-		{
-			char d0, d1, d2, d3;
-			file.get(d0);
-			file.get(d1);
-			file.get(d2);
-			file.get(d3);
-
-			data[d0 & 15][d1 >> 4][d1 & 15] = CubeID((uint32_t(d2) << 16) + uint32_t(d3));
-
-		}
-
-		UpdateAllFaces();
-		loaded = true;
-		return true;
 	}
 
-	return false;
+	return GetCubeIdAtPosition(chunkPosition * CHUNK_LENGTH + blockPosition);
 }
 
 void Chunk::SaveChunkData()
 {
-	const String chunkDataDirectory = World::Instance().GetWorldChunkDataDirectory();
-	const String filename = chunkDataDirectory + std::to_string(position.x) + "_" + std::to_string(position.y) + "_" + std::to_string(position.z) + ".cd";
-	std::fstream file;
-
-	const glm::vec3 WSChunkPosition = position * CHUNK_LENGTH;
-
-	for (int z = 0; z < CHUNK_LENGTH; z++)
+	if (GameManager::Instance().GetWorld()->IsHostWorld())
 	{
-		for (int x = 0; x < CHUNK_LENGTH; x++)
-		{
-			for (int y = 0; y < CHUNK_LENGTH; y++)
-			{
-				if(GetCubeIdAtPosition(WSChunkPosition + glm::vec3(x, y, z)) != data[x][y][z].GetID())
-				{
-					if (!file.is_open()) {
-						file = std::fstream(filename, std::ios::out | std::ios::binary | std::ios::trunc);
-					}
+		const String filename = GameManager::Instance().GetWorld()->GetChunkDataFile(position);
+		std::fstream file;
 
-					CubeID cubeId = data[x][y][z].GetID();
-					file << uint8_t(x & 15) << uint8_t((y << 4) + z) << uint8_t(cubeId >> 16) << uint8_t(cubeId & 15);
+		const glm::vec3 WSChunkPosition = position * CHUNK_LENGTH;
+
+		for (uint16_t z = 0; z < CHUNK_LENGTH; z++)
+		{
+			for (uint16_t x = 0; x < CHUNK_LENGTH; x++)
+			{
+				for (uint16_t y = 0; y < CHUNK_LENGTH; y++)
+				{
+					if (GetCubeIdAtPosition(WSChunkPosition + glm::vec3(x, y, z)) != data[x][y][z].GetID())
+					{
+						if (!file.is_open()) {
+							file = std::fstream(filename, std::ios::out | std::ios::trunc | std::ios::binary);
+						}
+						file.write((char*)&ChunkBlockData(glm::ivec3(x,y,z), data[x][y][z].GetID()), sizeof(ChunkBlockData));
+					}
 				}
 			}
 		}
-	}
 
-	if (file.is_open())
-	{
-		file.close();
+		if (file.is_open())
+		{
+			file.close();
+		}
 	}
 }
 
 CubeID Chunk::GetCubeIdAtPosition(const glm::vec3& cubePosition)
 {
-	const World& world = World::Instance();
+	const SharedPtr<World> world = GameManager::Instance().GetWorld();
 
 	const unsigned int baseHeight = 20;
 	const float inclineMultiplier = 40.0f;
-	const int regionLength = world.GetRegionLength();
-	const glm::vec3 wrappedPosition = world.TranslateIntoWrappedWorld(cubePosition);
+	const int regionLength = world->GetRegionLength();
+	const glm::vec3 wrappedPosition = world->TranslateIntoWrappedWorld(cubePosition);
 	const int caveFreq = 16;
 	const int caveThreshold = 10;
 	const int waterHeight = baseHeight - 15;
 
 	CubeID id = Air;
 
-	if (const SharedPtr<PerlinNoise> perlinGenerator = world.GetPerlinNoiseGenerator())
+	if (const SharedPtr<PerlinNoise> perlinGenerator = world->GetPerlinNoiseGenerator())
 	{
 		const float biomeFrequency = 4.f;
 		const float biomeMinFrequency = glm::min((float)regionLength, biomeFrequency > 0 ? 1 << int(biomeFrequency) : biomeFrequency);
@@ -376,33 +405,59 @@ void Chunk::SetBlockAtPosition(const glm::ivec3& blockPosition, CubeID newBlock)
 	data[blockPosition.x][blockPosition.y][blockPosition.z] = newBlock;
 	UpdateCubeFaces(blockPosition);
 
+	const SharedPtr<World> world = GameManager::Instance().GetWorld();
+
 	//#TODO UPDATE BLOCKS ON ADJACENT CHUNKS
 
 	if (IsPositionInsideChunk(blockPosition + glm::ivec3(-1, 0, 0))) {
 		UpdateCubeFaces(blockPosition + glm::ivec3(-1, 0, 0));
 	}
+	else if(auto chunk = world->FindChunk(position + glm::ivec3(-1, 0, 0))) {
+		chunk->UpdateCubeFaces((blockPosition + glm::ivec3(-1, 0, 0)) % CHUNK_LENGTH);
+	}
+
 	if (IsPositionInsideChunk(blockPosition + glm::ivec3(1, 0, 0))) {
 		UpdateCubeFaces(blockPosition + glm::ivec3(1, 0, 0));
 	}
+	else if (auto chunk = world->FindChunk(position + glm::ivec3(1, 0, 0))) {
+		chunk->UpdateCubeFaces((blockPosition + glm::ivec3(1, 0, 0)) % CHUNK_LENGTH);
+	}
+
 	if (IsPositionInsideChunk(blockPosition + glm::ivec3(0, -1, 0))) {
 		UpdateCubeFaces(blockPosition + glm::ivec3(0, -1, 0));
 	}
+	else if (auto chunk = world->FindChunk(position + glm::ivec3(0, -1, 0))) {
+		chunk->UpdateCubeFaces((blockPosition + glm::ivec3(0, -1, 0)) % CHUNK_LENGTH);
+	}
+
 	if (IsPositionInsideChunk(blockPosition + glm::ivec3(0, 1, 0))) {
 		UpdateCubeFaces(blockPosition + glm::ivec3(0, 1, 0));
 	}
+	else if (auto chunk = world->FindChunk(position + glm::ivec3(0, 1, 0))) {
+		chunk->UpdateCubeFaces((blockPosition + glm::ivec3(0, 1, 0)) % CHUNK_LENGTH);
+	}
+
 	if (IsPositionInsideChunk(blockPosition + glm::ivec3(0, 0, -1))) {
 		UpdateCubeFaces(blockPosition + glm::ivec3(0, 0, -1));
 	}
+	else if (auto chunk = world->FindChunk(position + glm::ivec3(0, 0, -1))) {
+		chunk->UpdateCubeFaces((blockPosition + glm::ivec3(0, 0, -1)) % CHUNK_LENGTH);
+	}
+
 	if (IsPositionInsideChunk(blockPosition + glm::ivec3(0, 0, 1))) {
 		UpdateCubeFaces(blockPosition + glm::ivec3(0, 0, 1));
 	}
+	else if (auto chunk = world->FindChunk(position + glm::ivec3(0, 0, 1))) {
+		chunk->UpdateCubeFaces((blockPosition + glm::ivec3(0, 0, 1)) % CHUNK_LENGTH);
+	}
 
 	dirty = true;
+	shouldTrySave = true;
 }
 
 bool Chunk::IsPositionInsideChunk(const glm::ivec3& position) const 
 {
-	return position.x >= 0 && position.x < CHUNK_LENGTH&& position.y >= 0 && position.y < CHUNK_LENGTH&& position.z >= 0 && position.z < CHUNK_LENGTH;
+	return position.x > -1 && position.x < CHUNK_LENGTH && position.y > -1 && position.y < CHUNK_LENGTH && position.z > -1 && position.z < CHUNK_LENGTH;
 }
 
 void Chunk::SetVertexAttributePointer()
