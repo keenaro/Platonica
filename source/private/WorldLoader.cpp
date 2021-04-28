@@ -36,9 +36,15 @@ void WorldLoader::UpdateGUI()
 
 	if (ImGui::CollapsingHeader("Host World"))
 	{
-		for(const auto& worldName : worldNames)
+		for (auto it = worldNames.begin(); it != worldNames.end(); it++)
 		{
-			if (ImGui::Button(worldName.c_str())) CreateOrLoadWorld(worldName);
+			if (ImGui::Button(it->c_str())) CreateOrLoadWorld(*it);
+			ImGui::SameLine(0, 10);
+			String deleteString = "Delete##" + *it;
+			if (ImGui::Button(deleteString.c_str())) {
+				DeleteWorld(it);
+				break;
+			}
 		}
 
 		if (ImGui::CollapsingHeader("Create New World"))
@@ -85,4 +91,11 @@ void WorldLoader::ConnectToWorld(const char* hostname, int port)
 		DPrintf("Failed to connect to %s:%i.\n", hostname, port);
 	}
 
+}
+
+void WorldLoader::DeleteWorld(std::list<String>::const_iterator& world)
+{
+	String worldPath = "./Worlds/" + *world;
+	std::filesystem::remove_all(worldPath);
+	world = worldNames.erase(world);
 }

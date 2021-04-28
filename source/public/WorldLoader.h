@@ -11,8 +11,9 @@ public:
 private:
 	void UpdateGUI();
 	void CreateOrLoadWorld(const String& worldName, int seed = 0, int regionLength = 8);
+	void DeleteWorld(std::list<String>::const_iterator& world);
 	void ConnectToWorld(const char* hostname, int port);
 private:
-	std::vector<String> worldNames;
+	std::list<String> worldNames;
 
 };
