@@ -46,7 +46,7 @@ public:
 private:
 	void GenerateBuffers();
 	void UpdateAllFaces();
-	void UpdateCubeFaces(const glm::ivec3& cubePosition);
+	bool UpdateCubeFaces(const glm::ivec3& cubePosition);
 	void AddCubeAtPosition(const glm::ivec3& positionInsideChunk, const Cube& cube, std::vector<int32_t>& vertices, std::vector<unsigned int>& indices) const;
 	glm::ivec3 GetCubePositionFromCubeVertex(int32_t inData) const;
 	glm::ivec3 GetNormalFromCubeVertex(int32_t inData) const;

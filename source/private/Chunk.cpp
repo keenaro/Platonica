@@ -5,6 +5,7 @@
 #include "Player.h"
 #include "Defs.h"
 #include <fstream>
+#include "MathFunctions.h"
 #include "GameManager.h"
 
 Chunk::Chunk(const glm::ivec3& inPosition) : VertexRenderObject(false), Position(inPosition)
@@ -82,9 +83,11 @@ void Chunk::UpdateAllFaces()
 	}
 }
 
-void Chunk::UpdateCubeFaces(const glm::ivec3& cubePosition)
+bool Chunk::UpdateCubeFaces(const glm::ivec3& cubePosition)
 {
 	Cube& cube = data[cubePosition.x][cubePosition.y][cubePosition.z];
+	const Cube previousCubeCopy = cube;
+
 	cube.SetFaceData(CubeFace::All);
 
 	const SharedPtr<CubeDefs> cubeDefs = GameManager::Instance().GetCubeDefs();
@@ -125,6 +128,8 @@ void Chunk::UpdateCubeFaces(const glm::ivec3& cubePosition)
 
 	if (shouldCull(glm::ivec3(0, 0, 1)))
 		cube.CullFace(CubeFace::Front);
+
+	return previousCubeCopy != cube;
 }
 
 void Chunk::AddCubeAtPosition(const glm::ivec3& positionInsideChunk, const Cube& cube, std::vector<int32_t>& vertices, std::vector<unsigned int>& indices) const
@@ -465,7 +470,7 @@ bool Chunk::IsTreeBaseAtWrappedPosition(const glm::vec3& position)
 {
 	const float treeFreq = 1.1f;
 	const float treeNoise = abs(PerlinNoise::PNoise(glm::vec3(position.x / treeFreq, position.z / treeFreq, 0.0f)));
-	return (treeNoise > 0.5f);
+	return (treeNoise > 0.4f);
 }
 
 CubeID Chunk::GetCubeIdAtPosition(const glm::vec3& cubePosition)
@@ -498,49 +503,31 @@ void Chunk::SetBlockAtPosition(const glm::ivec3& blockPosition, CubeID newBlock)
 
 	const SharedPtr<World> world = GameManager::Instance().GetWorld();
 
-	//#TODO UPDATE BLOCKS ON ADJACENT CHUNKS
+	const auto TryUpdateFaces = [this, &world, &blockPosition](glm::ivec3& offset)
+	{
+		if (IsPositionInsideChunk(blockPosition + offset)) {
+			UpdateCubeFaces(blockPosition + offset);
+		}
 
-	if (IsPositionInsideChunk(blockPosition + glm::ivec3(-1, 0, 0))) {
-		UpdateCubeFaces(blockPosition + glm::ivec3(-1, 0, 0));
-	}
-	else if(auto chunk = world->FindChunk(position + glm::ivec3(-1, 0, 0))) {
-		chunk->UpdateCubeFaces((blockPosition + glm::ivec3(-1, 0, 0)) % CHUNK_LENGTH);
-	}
+		//#TODO Maybe, we could technically cull faces on neighboring chunks on the main thread safely, but this requires a method of determining the current thread.
+		//		For what it is, it's not worth it, unless we fix neighboring chunk culling thread safety. (Goto Chunk::UpdateChunkFaces for more information)
+		//else if (auto chunk = world->FindChunk(position + offset)) {
+		//	if (chunk->UpdateCubeFaces(WrapMod(blockPosition + offset, CHUNK_LENGTH)))
+		//	{
+		//		chunk->dirty = true;
+		//	}
+		//}
 
-	if (IsPositionInsideChunk(blockPosition + glm::ivec3(1, 0, 0))) {
-		UpdateCubeFaces(blockPosition + glm::ivec3(1, 0, 0));
-	}
-	else if (auto chunk = world->FindChunk(position + glm::ivec3(1, 0, 0))) {
-		chunk->UpdateCubeFaces((blockPosition + glm::ivec3(1, 0, 0)) % CHUNK_LENGTH);
-	}
+		return false;
+	};
 
-	if (IsPositionInsideChunk(blockPosition + glm::ivec3(0, -1, 0))) {
-		UpdateCubeFaces(blockPosition + glm::ivec3(0, -1, 0));
-	}
-	else if (auto chunk = world->FindChunk(position + glm::ivec3(0, -1, 0))) {
-		chunk->UpdateCubeFaces((blockPosition + glm::ivec3(0, -1, 0)) % CHUNK_LENGTH);
-	}
+	TryUpdateFaces(glm::ivec3(-1, 0, 0));
+	TryUpdateFaces(glm::ivec3(1, 0, 0));
+	TryUpdateFaces(glm::ivec3(0, -1, 0));
+	TryUpdateFaces(glm::ivec3(0, 1, 0));
+	TryUpdateFaces(glm::ivec3(0, 0, -1));
+	TryUpdateFaces(glm::ivec3(0, 0, 1));
 
-	if (IsPositionInsideChunk(blockPosition + glm::ivec3(0, 1, 0))) {
-		UpdateCubeFaces(blockPosition + glm::ivec3(0, 1, 0));
-	}
-	else if (auto chunk = world->FindChunk(position + glm::ivec3(0, 1, 0))) {
-		chunk->UpdateCubeFaces((blockPosition + glm::ivec3(0, 1, 0)) % CHUNK_LENGTH);
-	}
-
-	if (IsPositionInsideChunk(blockPosition + glm::ivec3(0, 0, -1))) {
-		UpdateCubeFaces(blockPosition + glm::ivec3(0, 0, -1));
-	}
-	else if (auto chunk = world->FindChunk(position + glm::ivec3(0, 0, -1))) {
-		chunk->UpdateCubeFaces((blockPosition + glm::ivec3(0, 0, -1)) % CHUNK_LENGTH);
-	}
-
-	if (IsPositionInsideChunk(blockPosition + glm::ivec3(0, 0, 1))) {
-		UpdateCubeFaces(blockPosition + glm::ivec3(0, 0, 1));
-	}
-	else if (auto chunk = world->FindChunk(position + glm::ivec3(0, 0, 1))) {
-		chunk->UpdateCubeFaces((blockPosition + glm::ivec3(0, 0, 1)) % CHUNK_LENGTH);
-	}
 
 	dirty = true;
 	shouldTrySave = true;
