@@ -10,7 +10,6 @@
 Chunk::Chunk(const glm::ivec3& inPosition) : VertexRenderObject(false), Position(inPosition)
 {
 	dirty = true;
-	shader = GameManager::Instance().GetWorld()->GetShader();
 }
 
 bool Chunk::ShouldDraw(const glm::ivec3& chunkRegionWorldPosition) const
@@ -41,7 +40,7 @@ void Chunk::Draw()
 
 void Chunk::SetShaderUniformValues()
 {
-	shader->SetIVector3("ChunkPosition", GetWorldPosition());
+	GameManager::Instance().GetWorld()->GetShader()->SetIVector3("ChunkPosition", GetWorldPosition());
 }
 
 void Chunk::GenerateBuffers()

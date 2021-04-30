@@ -17,7 +17,7 @@ RenderObject::~RenderObject()
 
 void RenderObject::Draw()
 {
-	if (!ShaderLibrary::IsShaderCurrentlyBinded(shader))
+	if (shader && !ShaderLibrary::IsShaderCurrentlyBinded(shader))
 	{
 		shader->Use();
 	}
