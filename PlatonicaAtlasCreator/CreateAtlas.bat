@@ -1,0 +1,2 @@
+python CreateAtlas.py
+pause

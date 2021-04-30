@@ -3,7 +3,7 @@
 #include "UpdateObject.h"
 #include <sstream>
 
-ClientWorld::ClientWorld(ClientWorld& connectedWorld) : World(connectedWorld.seed, connectedWorld.regionLength, connectedWorld.netClient)
+ClientWorld::ClientWorld(ClientWorld& connectedWorld) : World(connectedWorld.metaData.seed, connectedWorld.metaData.regionLength, connectedWorld.netClient)
 {
 	netPeers = connectedWorld.netPeers;
 }
@@ -36,10 +36,8 @@ bool ClientWorld::TryConnect(const char* hostname, int port)
 		}
 		else if(event.type == ENET_EVENT_TYPE_RECEIVE)
 		{
-			uint32_t data = *(uint32_t*)event.packet->data;
-			seed = data >> 16;
-			regionLength = data & 255;
-			DPrintf("Seed: %i, Region Length: %i\n", seed, regionLength);
+			metaData = *(WorldMetaData*)event.packet->data;
+			DPrintf("Seed: %i, Region Length: %i\n", metaData.seed, metaData.regionLength);
 			break;
 		}
 	}

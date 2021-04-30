@@ -4,9 +4,7 @@
 #include <algorithm>
 #include <numeric>
 
-PerlinNoise::PerlinNoise(unsigned int seed) {
-	Reseed(seed);
-}
+std::vector<int> PerlinNoise::permutation;
 
 void PerlinNoise::Reseed(unsigned int seed)
 {
@@ -24,9 +22,9 @@ float PerlinNoise::PNoise(const glm::vec3& pos, const glm::ivec3& periodicPos)
 	float s, t, r;
 	float nxy0, nxy1, nx0, nx1, n0, n1;
 
-	ix0 = floor(pos.x);
-	iy0 = floor(pos.y);
-	iz0 = floor(pos.z);
+	ix0 = fastfloor(pos.x);
+	iy0 = fastfloor(pos.y);
+	iz0 = fastfloor(pos.z);
 	fx0 = pos.x - ix0;
 	fy0 = pos.y - iy0;
 	fz0 = pos.z - iz0;
@@ -39,6 +37,56 @@ float PerlinNoise::PNoise(const glm::vec3& pos, const glm::ivec3& periodicPos)
 	ix0 = (ix0 % periodicPos.x) & 255;
 	iy0 = (iy0 % periodicPos.y) & 255;
 	iz0 = (iz0 % periodicPos.z) & 255;
+
+	r = Fade(fz0);
+	t = Fade(fy0);
+	s = Fade(fx0);
+
+	nxy0 = Grad(permutation[ix0 + permutation[iy0 + permutation[iz0]]], fx0, fy0, fz0);
+	nxy1 = Grad(permutation[ix0 + permutation[iy0 + permutation[iz1]]], fx0, fy0, fz1);
+	nx0 = Lerp(r, nxy0, nxy1);
+
+	nxy0 = Grad(permutation[ix0 + permutation[iy1 + permutation[iz0]]], fx0, fy1, fz0);
+	nxy1 = Grad(permutation[ix0 + permutation[iy1 + permutation[iz1]]], fx0, fy1, fz1);
+	nx1 = Lerp(r, nxy0, nxy1);
+
+	n0 = Lerp(t, nx0, nx1);
+
+	nxy0 = Grad(permutation[ix1 + permutation[iy0 + permutation[iz0]]], fx1, fy0, fz0);
+	nxy1 = Grad(permutation[ix1 + permutation[iy0 + permutation[iz1]]], fx1, fy0, fz1);
+	nx0 = Lerp(r, nxy0, nxy1);
+
+	nxy0 = Grad(permutation[ix1 + permutation[iy1 + permutation[iz0]]], fx1, fy1, fz0);
+	nxy1 = Grad(permutation[ix1 + permutation[iy1 + permutation[iz1]]], fx1, fy1, fz1);
+	nx1 = Lerp(r, nxy0, nxy1);
+
+	n1 = Lerp(t, nx0, nx1);
+
+	return 0.936f * (Lerp(s, n0, n1));
+}
+
+float PerlinNoise::PNoise(const glm::vec3& pos)
+{
+	int ix0, iy0, ix1, iy1, iz0, iz1;
+	float fx0, fy0, fz0, fx1, fy1, fz1;
+	float s, t, r;
+	float nxy0, nxy1, nx0, nx1, n0, n1;
+
+	ix0 = fastfloor(pos.x);
+	iy0 = fastfloor(pos.y);
+	iz0 = fastfloor(pos.z);
+	fx0 = pos.x - ix0;
+	fy0 = pos.y - iy0;
+	fz0 = pos.z - iz0;
+	fx1 = fx0 - 1.0f;
+	fy1 = fy0 - 1.0f;
+	fz1 = fz0 - 1.0f;
+	ix0 &= 255;
+	iy0 &= 255;
+	iz0 &= 255;
+	ix1 = (ix0 + 1) & 255;
+	iy1 = (iy0 + 1) & 255;
+	iz1 = (iz0 + 1) & 255;
 
 	r = Fade(fz0);
 	t = Fade(fy0);

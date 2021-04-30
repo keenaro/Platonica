@@ -19,8 +19,7 @@ enum CubeFace
 class Cube
 {
 public:
-	Cube() {};
-	Cube(CubeID id) { SetID(id); };
+	Cube(CubeID id = Air) { SetID(id); };
 
 	bool CanSee() const;
 

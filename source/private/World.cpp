@@ -19,14 +19,14 @@ World::World(const String& inWorldName, uint16_t inSeed, uint16_t inRegionLength
 
 	if(!TryLoadMetaData())
 	{
-		seed = inSeed;
-		regionLength = inRegionLength;
+		metaData.seed = inSeed;
+		metaData.regionLength = inRegionLength;
 		SaveMetaData();
 	}
 
 	shader = ShaderLibrary::GetShader(std::string("WorldCubes"));
 	player = MakeShared<Player>();
-	perlin = MakeShared<PerlinNoise>(seed);
+	PerlinNoise::Reseed(metaData.seed);
 	LoadTexture("textures/atlas.png");
 	chunkManager = MakeShared<AsyncChunkManager>(4);
 
@@ -35,13 +35,13 @@ World::World(const String& inWorldName, uint16_t inSeed, uint16_t inRegionLength
 
 World::World(uint16_t inSeed, uint16_t inRegionLength, ENetHost* inClient) : RenderObject(true), UpdateObject(true)
 {
-	seed = inSeed;
-	regionLength = inRegionLength;
+	metaData.seed = inSeed;
+	metaData.regionLength = inRegionLength;
 	netClient = inClient;
 
 	shader = ShaderLibrary::GetShader(std::string("WorldCubes"));
 	player = MakeShared<Player>();
-	perlin = MakeShared<PerlinNoise>(seed);
+	PerlinNoise::Reseed(metaData.seed);
 	LoadTexture("textures/atlas.png");
 	chunkManager = MakeShared<AsyncChunkManager>(4);
 }
@@ -163,8 +163,8 @@ void World::TryRequestChunks()
 				const glm::ivec3& unwrappedChunkWorldPosition = unwrappedChunkPosition * CHUNK_LENGTH;
 				const glm::ivec3& chunkWorldPosition = TranslateIntoWrappedWorld(unwrappedChunkWorldPosition);
 				const glm::ivec3& chunkPosition = chunkWorldPosition / CHUNK_LENGTH;
-				const glm::ivec3& regionPositionWorldSpace = RoundDownToMultiple(unwrappedChunkWorldPosition, regionLength * CHUNK_LENGTH) * glm::ivec3(1, 0, 1);
-				const glm::ivec3& regionPosition = regionPositionWorldSpace / (CHUNK_LENGTH * regionLength);
+				const glm::ivec3& regionPositionWorldSpace = RoundDownToMultiple(unwrappedChunkWorldPosition, metaData.regionLength * CHUNK_LENGTH) * glm::ivec3(1, 0, 1);
+				const glm::ivec3& regionPosition = regionPositionWorldSpace / (CHUNK_LENGTH * metaData.regionLength);
 
 				if (glm::distance(glm::vec3(playerWorldPosition), glm::vec3(unwrappedChunkWorldPosition)) < GetOffloadDistance())
 				{
@@ -231,7 +231,7 @@ void World::SetShaderUniformValues()
 
 int World::TranslateIntoWrappedWorld(int value) const
 {
-	const int regionWorldLength = regionLength * CHUNK_LENGTH;
+	const int regionWorldLength = metaData.regionLength * CHUNK_LENGTH;
 	return (value + regionWorldLength * (abs(value / regionWorldLength) + 1)) % regionWorldLength;
 }
 
@@ -250,8 +250,8 @@ void World::UpdateGUI()
 	const glm::ivec3& unwrappedChunkWorldPosition = unwrappedChunkPosition * CHUNK_LENGTH;
 	const glm::ivec3& chunkWorldPosition = TranslateIntoWrappedWorld(unwrappedChunkWorldPosition);
 	const glm::ivec3& chunkPosition = chunkWorldPosition / CHUNK_LENGTH;
-	const glm::ivec3& regionPositionWorldSpace = RoundDownToMultiple(unwrappedChunkWorldPosition, regionLength * CHUNK_LENGTH) * glm::ivec3(1, 0, 1);
-	const glm::ivec3& regionPosition = regionPositionWorldSpace / (CHUNK_LENGTH * regionLength);
+	const glm::ivec3& regionPositionWorldSpace = RoundDownToMultiple(unwrappedChunkWorldPosition, metaData.regionLength * CHUNK_LENGTH) * glm::ivec3(1, 0, 1);
+	const glm::ivec3& regionPosition = regionPositionWorldSpace / (CHUNK_LENGTH * metaData.regionLength);
 	ImGui::Text("Chunk Position: %s", glm::to_string(chunkPosition).c_str());
 	ImGui::Text("Region Position: %s", glm::to_string(regionPosition).c_str());
 
@@ -396,10 +396,10 @@ void World::ReplicatePlaceBlock(const glm::ivec3& chunkWorldPosition, const glm:
 SharedPtr<Chunk> World::GetOrCreateChunkFromWorldPosition(const glm::vec3& position, bool createIfNull)
 {
 	const glm::ivec3 flooredPos = glm::floor(position);
-	const glm::ivec3 regionWorldPosition = RoundDownToMultiple(flooredPos, regionLength * CHUNK_LENGTH) * glm::ivec3(1, 0, 1);
+	const glm::ivec3 regionWorldPosition = RoundDownToMultiple(flooredPos, metaData.regionLength * CHUNK_LENGTH) * glm::ivec3(1, 0, 1);
 	const glm::ivec3 blockWorldPos = flooredPos - regionWorldPosition;
 	const glm::ivec3 chunkWorldPos = RoundDownToMultiple(blockWorldPos, CHUNK_LENGTH);
-	const glm::ivec3 regionPosition = regionWorldPosition / (regionLength * CHUNK_LENGTH);
+	const glm::ivec3 regionPosition = regionWorldPosition / (metaData.regionLength * CHUNK_LENGTH);
 	const glm::ivec3 chunkPos = chunkWorldPos / CHUNK_LENGTH;
 	SharedPtr<ChunkRegion> region = GetOrCreateRegion(regionPosition);
 	SharedPtr<Chunk> chunk = region->GetChunk(chunkPos);
@@ -415,7 +415,7 @@ SharedPtr<Chunk> World::GetOrCreateChunkFromWorldPosition(const glm::vec3& posit
 void World::GetBlockWorldPosition(const glm::vec3& position, glm::ivec3& outBlockWorldPosition)
 {
 	const glm::ivec3 flooredPos = glm::floor(position);
-	const glm::ivec3 regionWorldPosition = RoundDownToMultiple(flooredPos, regionLength * CHUNK_LENGTH) * glm::ivec3(1, 0, 1);
+	const glm::ivec3 regionWorldPosition = RoundDownToMultiple(flooredPos, metaData.regionLength * CHUNK_LENGTH) * glm::ivec3(1, 0, 1);
 	const glm::ivec3 blockWorldPos = flooredPos - regionWorldPosition;
 	const glm::ivec3 chunkWorldPos = RoundDownToMultiple(blockWorldPos, CHUNK_LENGTH);
 	outBlockWorldPosition = blockWorldPos - chunkWorldPos;
@@ -429,10 +429,9 @@ bool World::TryLoadMetaData()
 	std::ifstream file(GetWorldMetadataDirectory().c_str(), std::ios::in | std::ios::binary);
 	if (file.is_open())
 	{
-		file.read((char*)&seed, sizeof(seed));
-		file.read((char*)&regionLength, sizeof(regionLength));
+		file.read((char*)&metaData, sizeof(WorldMetaData));
 
-		DPrintf("Loaded %s, seed: %i, region length: %i\n", worldName.c_str(), seed, regionLength);
+		DPrintf("Loaded %s, seed: %i, region length: %i\n", worldName.c_str(), metaData.seed, metaData.regionLength);
 		return true;
 	}
 
@@ -444,8 +443,7 @@ void World::SaveMetaData()
 	std::fstream file = std::fstream(GetWorldMetadataDirectory().c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
 	if (file.is_open())
 	{
-		file.write((char*)&seed, sizeof(seed));
-		file.write((char*)&regionLength, sizeof(regionLength));
+		file.write((char*)&metaData, sizeof(WorldMetaData));
 	}
 }
 
@@ -499,10 +497,8 @@ void World::UpdateNetClient()
 				/* Store any relevant client information here. */
 				event.peer->data = "Client information";
 				netPeers.insert(event.peer);
-
-				uint32_t data = (seed << 16) + regionLength;
-				ENetPacket* packet = enet_packet_create((char*)&data, sizeof(data), ENET_PACKET_FLAG_RELIABLE);
-				enet_peer_send(event.peer, 0, packet);
+				SendPacket((enet_uint8 *)&metaData, sizeof(WorldMetaData), event.peer, 0);
+				//enet_peer_send(event.peer, 0, packet);
 				break;
 			}
 			case ENET_EVENT_TYPE_RECEIVE:

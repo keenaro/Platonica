@@ -10,6 +10,13 @@ class ChunkRegion;
 class Player;
 class AsyncChunkManager;
 
+struct WorldMetaData
+{
+public:
+	uint16_t seed = 0;
+	uint16_t regionLength = 0;
+};
+
 class World : public RenderObject, public UpdateObject
 {
 public:
@@ -17,7 +24,7 @@ public:
 	World(uint16_t inSeed, uint16_t inRegionLength, ENetHost* inClient);
 	World() : RenderObject(false), UpdateObject(false) {};
 public:
-	int GetRegionLength() const { return regionLength; };
+	int GetRegionLength() const { return metaData.regionLength; };
 	int GetRenderDistance() const { return renderDistance * CHUNK_LENGTH; };
 	int GetOffloadDistance() const { return GetRenderDistance() + CHUNK_LENGTH; }
 	void PlaceBlockFromPositionInDirection(const glm::vec3& position, const glm::vec3& direction, float maxDistance, CubeID blockToPlace, bool shouldReplaceBlock = false);
@@ -92,6 +99,5 @@ protected:
 	int renderDistance = 8;
 	float sphericalFalloff = 0.005f;
 	String worldName = "World";
-	uint16_t seed = 0;
-	uint16_t regionLength = 0;
+	WorldMetaData metaData;
 };

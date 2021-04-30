@@ -254,27 +254,71 @@ int32_t Chunk::GetCubeVertexData(const CubeID cubeID, const glm::ivec3& vertexPo
 	return data;
 }
 
-void Chunk::GenerateChunkData(const ChunkBlockData* extraChunkData, const int extraChunkLength)
-{ 
+void Chunk::GenerateUnmodifiedChunkData()
+{
 	const glm::vec3 WSChunkPosition = position * CHUNK_LENGTH;
+	const SharedPtr<World> world = GameManager::Instance().GetWorld();
+	const unsigned int baseHeight = 20;
+	const float inclineMultiplier = 40.0f;
+	const int regionLength = world->GetRegionLength();
+	const float frequency = 2.f;
+	const float minFrequency = glm::min((float)regionLength, frequency > 0 ? 1 << int(frequency) : frequency);
+
+	std::list<glm::ivec3> treeBases;
 
 	for (int z = 0; z < CHUNK_LENGTH; z++)
 	{
 		for (int x = 0; x < CHUNK_LENGTH; x++)
 		{
-			for (int y = 0; y < CHUNK_LENGTH; y++)
+			const glm::vec3 wrappedXZ = world->TranslateIntoWrappedWorld(glm::vec3(x, 0, z) + WSChunkPosition);
+			const int terrainHeight = GetTerrainHeightAtWrappedPosition(wrappedXZ);
+
+			if (WSChunkPosition.y < terrainHeight)
 			{
-				data[x][y][z].SetID(GetCubeIdAtPosition(WSChunkPosition + glm::vec3(x, y, z)));
+				for (int y = 0; y < CHUNK_LENGTH; y++)
+				{
+					const glm::vec3 wrappedPosition = world->TranslateIntoWrappedWorld(glm::vec3(x, y, z) + WSChunkPosition);
+
+					if (wrappedPosition.y >= terrainHeight || IsCaveAtWrappedPosition(wrappedPosition, terrainHeight))
+					{
+						data[x][y][z].SetID(Air);
+					}
+					else
+					{
+						data[x][y][z].SetID(wrappedPosition.y + 1 == terrainHeight ? Grass : wrappedPosition.y + 5 > terrainHeight ? Dirt : Stone);
+					}
+				}
+			}
+
+			if (terrainHeight >= WSChunkPosition.y && terrainHeight < WSChunkPosition.y + CHUNK_LENGTH)
+			{
+				if (IsTreeBaseAtWrappedPosition(wrappedXZ))
+				{
+					treeBases.push_back(glm::ivec3(x, terrainHeight - (int)WSChunkPosition.y, z));
+				}
 			}
 		}
 	}
 
-	TryLoadChunkData();
+	for (auto& treePos : treeBases)
+	{
+		GrowTreeAtBlockPosition(treePos);
+	}
+}
+
+void Chunk::GenerateChunkData(const ChunkBlockData* extraChunkData, const int extraChunkLength)
+{
+	GenerateUnmodifiedChunkData();
+
+	if (GameManager::Instance().GetWorld()->IsHostWorld())
+	{
+		TryLoadChunkData();
+	}
 
 	if (extraChunkData)
 	{
 		const ChunkBlockData* chunkData = extraChunkData;
-		for(int pos = 0; pos < extraChunkLength; pos++)
+		for (int pos = 0; pos < extraChunkLength; pos++)
 		{
 			const auto blockPos = chunkData->GetPosition();
 			data[blockPos.x][blockPos.y][blockPos.z] = chunkData->blockId;
@@ -287,23 +331,57 @@ void Chunk::GenerateChunkData(const ChunkBlockData* extraChunkData, const int ex
 	loaded = true;
 }
 
-void Chunk::TryLoadChunkData()
+void Chunk::GrowTreeAtBlockPosition(const glm::ivec3& position)
 {
-	if (GameManager::Instance().GetWorld()->IsHostWorld())
+	int treeRadius = 1;
+	int treeHeight = 5;
+	int treeLeavesThickness = 3;
+
+	if(position.y + treeHeight > CHUNK_LENGTH || position.x - treeRadius < 0 || position.x + treeRadius > CHUNK_LENGTH-1 || position.z - treeRadius < 0 || position.z + treeRadius > CHUNK_LENGTH - 1)
 	{
-		const String filename = GameManager::Instance().GetWorld()->GetChunkDataFile(position);
-		std::ifstream file(filename.c_str(), std::ios::in | std::ios::binary);
-		if (file.is_open())
+		return; //Hack: We are too close to the chunk boundary don't bother.
+	}
+
+	for(int h = 0; h < treeHeight; h++)
+	{
+		if(h >= treeHeight - treeLeavesThickness)
 		{
-			while (!file.eof())
+			for(int lx = -treeRadius; lx <= treeRadius; lx++)
 			{
-				ChunkBlockData blockData;
-				file.read((char*)&blockData, sizeof(ChunkBlockData));
-				const auto blockPos = blockData.GetPosition();
-				data[blockPos.x][blockPos.y][blockPos.z] = blockData.blockId;
+				for (int lz = -treeRadius; lz <= treeRadius; lz++)
+				{
+					if (!lx || abs(lx) != abs(lz) || h != treeHeight-1)
+					{
+						data[position.x + lx][position.y + h][position.z + lz].SetID(Leaves);
+					}
+				}
 			}
 		}
+		else
+		{
+			data[position.x][position.y + h][position.z].SetID(Wood);
+		}
 	}
+}
+
+bool Chunk::TryLoadChunkData()
+{
+	const String filename = GameManager::Instance().GetWorld()->GetChunkDataFile(position);
+	std::ifstream file(filename.c_str(), std::ios::in | std::ios::binary);
+	if (file.is_open())
+	{
+		while (!file.eof())
+		{
+			ChunkBlockData blockData;
+			file.read((char*)&blockData, sizeof(ChunkBlockData));
+			const auto blockPos = blockData.GetPosition();
+			data[blockPos.x][blockPos.y][blockPos.z] = blockData.blockId;
+		}
+
+		return true;
+	}
+
+	return false;
 }
 
 CubeID Chunk::GetBlockFromSave(const glm::ivec3& chunkPosition, const glm::ivec3& blockPosition)
@@ -332,13 +410,16 @@ void Chunk::SaveChunkData()
 
 		const glm::vec3 WSChunkPosition = position * CHUNK_LENGTH;
 
+		Chunk unmodifiedChunk(position);
+		unmodifiedChunk.GenerateUnmodifiedChunkData();
+
 		for (uint16_t z = 0; z < CHUNK_LENGTH; z++)
 		{
 			for (uint16_t x = 0; x < CHUNK_LENGTH; x++)
 			{
 				for (uint16_t y = 0; y < CHUNK_LENGTH; y++)
 				{
-					if (GetCubeIdAtPosition(WSChunkPosition + glm::vec3(x, y, z)) != data[x][y][z].GetID())
+					if (unmodifiedChunk.data[x][y][z].GetID() != data[x][y][z].GetID())
 					{
 						if (!file.is_open()) {
 							file = std::fstream(filename, std::ios::out | std::ios::trunc | std::ios::binary);
@@ -356,43 +437,54 @@ void Chunk::SaveChunkData()
 	}
 }
 
-CubeID Chunk::GetCubeIdAtPosition(const glm::vec3& cubePosition)
+int Chunk::GetTerrainHeightAtWrappedPosition(const glm::vec3& position)
 {
 	const SharedPtr<World> world = GameManager::Instance().GetWorld();
-
 	const unsigned int baseHeight = 20;
 	const float inclineMultiplier = 40.0f;
 	const int regionLength = world->GetRegionLength();
-	const glm::vec3 wrappedPosition = world->TranslateIntoWrappedWorld(cubePosition);
-	const int caveFreq = 16;
+	const float frequency = 2.f;
+	const float minFrequency = glm::min((float)regionLength, frequency > 0 ? 1 << int(frequency) : frequency);
+
+	const float pNoise = PerlinNoise::PNoise(glm::vec3(position.x / CHUNK_LENGTH, position.z / CHUNK_LENGTH, 0.0f) / minFrequency, glm::vec3(regionLength, regionLength, minFrequency) / minFrequency);
+	return pNoise * inclineMultiplier + baseHeight;
+}
+
+bool Chunk::IsCaveAtWrappedPosition(const glm::vec3& position, int terrainHeight)
+{
 	const int caveThreshold = 10;
-	const int waterHeight = baseHeight - 15;
+
+	const SharedPtr<World> world = GameManager::Instance().GetWorld();
+	const int regionLength = world->GetRegionLength();
+	const float caveInclineMultiplier = terrainHeight + abs(position.y) * 0.01f;
+	const float testNoise = PerlinNoise::PNoise(glm::vec3(position.x / CHUNK_LENGTH, position.z / CHUNK_LENGTH, position.y / CHUNK_LENGTH), glm::ivec3(regionLength, regionLength, 10000.0f));
+	const int tnoise = testNoise * caveInclineMultiplier;
+	return (tnoise > caveThreshold);
+}
+
+bool Chunk::IsTreeBaseAtWrappedPosition(const glm::vec3& position)
+{
+	const float treeFreq = 1.1f;
+	const float treeNoise = abs(PerlinNoise::PNoise(glm::vec3(position.x / treeFreq, position.z / treeFreq, 0.0f)));
+	return (treeNoise > 0.5f);
+}
+
+CubeID Chunk::GetCubeIdAtPosition(const glm::vec3& cubePosition)
+{
+	const SharedPtr<World> world = GameManager::Instance().GetWorld();
+	const glm::vec3 wrappedPosition = world->TranslateIntoWrappedWorld(cubePosition);
 
 	CubeID id = Air;
 
-	if (const SharedPtr<PerlinNoise> perlinGenerator = world->GetPerlinNoiseGenerator())
+	const int terrainHeight = GetTerrainHeightAtWrappedPosition(wrappedPosition);
+
+	if (wrappedPosition.y < terrainHeight)
 	{
-		const float biomeFrequency = 4.f;
-		const float biomeMinFrequency = glm::min((float)regionLength, biomeFrequency > 0 ? 1 << int(biomeFrequency) : biomeFrequency);
-		const float biomeNoise = perlinGenerator->PNoise(glm::vec3(wrappedPosition.x / CHUNK_LENGTH, wrappedPosition.z / CHUNK_LENGTH, 0.0f) / biomeMinFrequency, glm::vec3(regionLength, regionLength, biomeMinFrequency) / biomeMinFrequency) * 10.f;
-
-		const float frequency = 3.f;
-		const float minFrequency = glm::min((float)regionLength, frequency > 0 ? 1 << int(frequency) : frequency);
-
-		const float pNoise = perlinGenerator->PNoise(glm::vec3(wrappedPosition.x / CHUNK_LENGTH, wrappedPosition.z / CHUNK_LENGTH, 0.0f) / minFrequency, glm::vec3(regionLength, regionLength, minFrequency) / minFrequency);
-		const int terrainHeight = pNoise * inclineMultiplier * biomeNoise + baseHeight;
-
-		if (wrappedPosition.y < terrainHeight)
-		{
-			const float caveInclineMultiplier = terrainHeight + abs(wrappedPosition.y) * 0.01f;
-			const float testNoise = perlinGenerator->PNoise(glm::vec3(wrappedPosition.x / CHUNK_LENGTH, wrappedPosition.z / CHUNK_LENGTH, wrappedPosition.y / CHUNK_LENGTH), glm::ivec3(regionLength, regionLength, 10000.0f));
-			const int tnoise = testNoise * caveInclineMultiplier;
-			if (tnoise > caveThreshold) {
-				id = Air;
-			}
-			else {
-				id = wrappedPosition.y + 1 == terrainHeight ? Grass : wrappedPosition.y + 5 > terrainHeight ? Dirt : Stone;
-			}
+		if (IsCaveAtWrappedPosition(wrappedPosition, terrainHeight)) {
+			id = Air;
+		}
+		else {
+			id = wrappedPosition.y + 1 == terrainHeight ? Grass : wrappedPosition.y + 5 > terrainHeight ? Dirt : Stone;
 		}
 	}
 

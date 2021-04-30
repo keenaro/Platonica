@@ -6,6 +6,10 @@ CubeDefs::CubeDefs()
 	RegisterCubeDef(CubeID::Stone, std::string("Stone"), glm::ivec2(3, 0));
 	RegisterCubeDef(CubeID::Dirt, std::string("Dirt"), glm::ivec2(0, 0));
 	RegisterCubeDef(CubeID::Grass, std::string("Grass"), glm::ivec2(2, 0), glm::ivec2(0,0), glm::ivec2(1,0), glm::ivec2(1, 0), glm::ivec2(1, 0), glm::ivec2(1, 0));
+	RegisterCubeDef(CubeID::Wood, std::string("Wood"), glm::ivec2(4, 0));
+	RegisterCubeDef(CubeID::RuggedStone, std::string("Rugged Stone"), glm::ivec2(5, 0));
+	RegisterCubeDef(CubeID::Leaves, std::string("Leaves"), glm::ivec2(6, 0));
+
 }
 
 const CubeDef& CubeDefs::GetCubeDef(CubeID cubeID) const

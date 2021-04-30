@@ -10,7 +10,10 @@ enum CubeID : uint16_t
 	Air = 0,
 	Stone = 1,
 	Dirt = 2,
-	Grass = 3
+	Grass = 3,
+	Wood = 4,
+	RuggedStone = 5,
+	Leaves = 6,
 };
 
 class CubeDefs

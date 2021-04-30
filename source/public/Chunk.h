@@ -26,6 +26,7 @@ public:
 	bool ShouldDraw(const glm::ivec3& chunkRegionWorldPosition) const;
 
 	void SaveChunkData();
+	void GenerateUnmodifiedChunkData();
 	void GenerateChunkData(const ChunkBlockData* extraChunkData = nullptr, const int extraChunkLength = 0);
 	glm::ivec3 GetWorldPosition() const { return position * CHUNK_LENGTH; };
 	glm::ivec3 GetWorldCentrePosition() const { return position * CHUNK_LENGTH + glm::ivec3(CHUNK_LENGTH / 2); }
@@ -36,6 +37,9 @@ public:
 	bool IsLoaded() const { return loaded; };
 
 	static CubeID GetCubeIdAtPosition(const glm::vec3& position);
+	static int GetTerrainHeightAtWrappedPosition(const glm::vec3& position);
+	static bool IsCaveAtWrappedPosition(const glm::vec3& position, int terrainHeight);
+	static bool IsTreeBaseAtWrappedPosition(const glm::vec3& position);
 
 	bool ShouldTrySave() const { return shouldTrySave; };
 
@@ -51,8 +55,10 @@ private:
 	void SetVertexAttributePointer() override;
 	void SetShaderUniformValues() override;
 	bool IsPositionInsideChunk(const glm::ivec3& position) const;
-	void TryLoadChunkData();
+	bool TryLoadChunkData();
 	CubeID GetBlockFromSave(const glm::ivec3& chunkPosition, const glm::ivec3& blockPosition);
+
+	void GrowTreeAtBlockPosition(const glm::ivec3& position);
 
 private:
 	bool dirty = true;
