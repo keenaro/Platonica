@@ -5,6 +5,12 @@ bool Cube::CanSee() const
 	return GetID() != CubeID::Air;
 }
 
+bool Cube::IsSolid() const
+{
+	const auto id = GetID();
+	return id != CubeID::Air || id != CubeID::Water;
+}
+
 void Cube::SetFaceData(CubeFace faces)
 {
 	m_data -= (m_data & (CubeFace::All << 10));

@@ -267,6 +267,7 @@ void Chunk::GenerateUnmodifiedChunkData()
 	const int regionLength = world->GetRegionLength();
 	const float frequency = 2.f;
 	const float minFrequency = glm::min((float)regionLength, frequency > 0 ? 1 << int(frequency) : frequency);
+	const int waterLevel = 3;
 
 	std::list<glm::ivec3> treeBases;
 
@@ -277,22 +278,32 @@ void Chunk::GenerateUnmodifiedChunkData()
 			const glm::vec3 wrappedXZ = world->TranslateIntoWrappedWorld(glm::vec3(x, 0, z) + WSChunkPosition);
 			const int terrainHeight = GetTerrainHeightAtWrappedPosition(wrappedXZ);
 
-			if (WSChunkPosition.y < terrainHeight)
+			if (WSChunkPosition.y < terrainHeight || WSChunkPosition.y < waterLevel)
 			{
 				for (int y = 0; y < CHUNK_LENGTH; y++)
 				{
 					const glm::vec3 wrappedPosition = world->TranslateIntoWrappedWorld(glm::vec3(x, y, z) + WSChunkPosition);
+					const bool isWaterLevelOrBelow = wrappedPosition.y <= waterLevel;
 
-					if (wrappedPosition.y >= terrainHeight || IsCaveAtWrappedPosition(wrappedPosition, terrainHeight))
+					if(wrappedPosition.y >= terrainHeight && isWaterLevelOrBelow)
+					{
+						data[x][y][z].SetID(Water);
+					}
+					else if (wrappedPosition.y >= terrainHeight || IsCaveAtWrappedPosition(wrappedPosition, terrainHeight))
 					{
 						data[x][y][z].SetID(Air);
 					}
+					else if (wrappedPosition.y + 1 == terrainHeight)
+					{
+						data[x][y][z].SetID(isWaterLevelOrBelow ? Sand : Grass);
+					}
 					else
 					{
-						data[x][y][z].SetID(wrappedPosition.y + 1 == terrainHeight ? Grass : wrappedPosition.y + 5 > terrainHeight ? Dirt : Stone);
+						data[x][y][z].SetID(wrappedPosition.y + 5 > terrainHeight ? Dirt : Stone);
 					}
 				}
 			}
+
 
 			if (terrainHeight >= WSChunkPosition.y && terrainHeight < WSChunkPosition.y + CHUNK_LENGTH)
 			{
@@ -341,12 +352,11 @@ void Chunk::GrowTreeAtBlockPosition(const glm::ivec3& position)
 	const int treeHeight = 5;
 	const int treeLeavesThickness = 3;
 
-	const bool treeNotContainedWithinChunk = position.y + treeHeight > CHUNK_LENGTH || position.x - treeRadius < 0 || position.x + treeRadius > CHUNK_LENGTH - 1 || position.z - treeRadius < 0 || position.z + treeRadius > CHUNK_LENGTH - 1;
-	
 	//Note this will only work if the tree is 1 block from up from the bottom of the chunk, as we want to keep all chunk generation self contained.
-	const bool isTreeFloating = position.y > 0 && data[position.x][position.y - 1][position.z].GetID() == Air;
+	const bool treeNotContainedWithinChunk = position.y + treeHeight > CHUNK_LENGTH || position.x - treeRadius < 0 || position.x + treeRadius > CHUNK_LENGTH - 1 || position.z - treeRadius < 0 || position.z + treeRadius > CHUNK_LENGTH - 1;
+	const bool treeOnSuitableBlock = position.y > 0 && data[position.x][position.y-1][position.z].GetID() == Grass;
 
-	if(treeNotContainedWithinChunk || isTreeFloating)
+	if(treeNotContainedWithinChunk || !treeOnSuitableBlock)
 	{
 		return; //Hack: We are too close to the chunk boundary don't bother.
 	}

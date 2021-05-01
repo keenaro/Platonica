@@ -36,7 +36,7 @@ void Window::WindowLoop()
 
 		UpdateGUI();
 
-		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+		glClearColor(clearColour.x, clearColour.y, clearColour.z, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		for(RenderObject* object : objectsToRender)
@@ -71,6 +71,7 @@ Window::Window()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 	dimensions = glm::ivec2(1920, 1080);
 	window = glfwCreateWindow(dimensions.x, dimensions.y, "Platonica", nullptr, nullptr);
+	clearColour = glm::vec3(0.1f);
 
 	if (!window) {
 		puts("Failed to Create OpenGL Context");

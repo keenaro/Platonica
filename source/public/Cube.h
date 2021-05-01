@@ -22,6 +22,7 @@ public:
 	Cube(CubeID id = Air) { SetID(id); };
 
 	bool CanSee() const;
+	bool IsSolid() const;
 
 	void SetID(CubeID id) { m_data = (uint32_t(id) << 16) + (m_data & 63); };
 	void SetFaceData(CubeFace faces);

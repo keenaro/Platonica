@@ -1,4 +1,5 @@
 from PIL import Image
+import subprocess
 
 blocks = [
 "dirt",
@@ -7,7 +8,26 @@ blocks = [
 "stone",
 "log",
 "ruggedStone",
-"leaves"]
+"leaves",
+"ice",
+"water",
+"bricks_red",
+"sand",
+"cactus_bottom",
+"cactus_side",
+"bricks_black",
+"planks_birch",
+"planks_pine",
+"planks_oak",
+"chest_bottom",
+"chest_side",
+"chest_front",
+"chest_back",
+"furnace_bottom",
+"furnace_side",
+"furnace_front" ]
+
+isLocatedWithinPlatonicaDirectory = True
 
 def CopyTexture(atlas, textureName, position):
     texture = Image.open("blocks/" + textureName + ".png")
@@ -29,7 +49,9 @@ def main():
             positionX = 0
     
     atlas.save('atlas.png')
-
+    
+    if isLocatedWithinPlatonicaDirectory:
+        atlas.save('..\\resources\\textures\\atlas.png')
 
 if __name__ == "__main__":
     main()

@@ -9,7 +9,17 @@ CubeDefs::CubeDefs()
 	RegisterCubeDef(CubeID::Wood, std::string("Wood"), glm::ivec2(4, 0));
 	RegisterCubeDef(CubeID::RuggedStone, std::string("Rugged Stone"), glm::ivec2(5, 0));
 	RegisterCubeDef(CubeID::Leaves, std::string("Leaves"), glm::ivec2(6, 0));
-
+	RegisterCubeDef(CubeID::Ice, std::string("Ice"), glm::ivec2(7, 0));
+	RegisterCubeDef(CubeID::Water, std::string("Water"), glm::ivec2(8, 0));
+	RegisterCubeDef(CubeID::Bricks_Red, std::string("Red Bricks"), glm::ivec2(9, 0));
+	RegisterCubeDef(CubeID::Sand, std::string("Sand"), glm::ivec2(10, 0));
+	RegisterCubeDef(CubeID::Cactus, std::string("Cactus"), glm::ivec2(11, 0), glm::ivec2(11, 0), glm::ivec2(12, 0), glm::ivec2(12, 0), glm::ivec2(12, 0), glm::ivec2(12, 0));
+	RegisterCubeDef(CubeID::Bricks_Black, std::string("Black Bricks"), glm::ivec2(13, 0));
+	RegisterCubeDef(CubeID::Planks_Birch, std::string("Birch Planks"), glm::ivec2(14, 0));
+	RegisterCubeDef(CubeID::Planks_Pine, std::string("Pine Planks"), glm::ivec2(15, 0));
+	RegisterCubeDef(CubeID::Planks_Oak, std::string("Oak Planks"), glm::ivec2(16, 0));
+	RegisterCubeDef(CubeID::Chest, std::string("Chest"), glm::ivec2(17, 0), glm::ivec2(17, 0), glm::ivec2(18, 0), glm::ivec2(18, 0), glm::ivec2(19, 0), glm::ivec2(20, 0));
+	RegisterCubeDef(CubeID::Furnace, std::string("Furnace"), glm::ivec2(21, 0), glm::ivec2(21, 0), glm::ivec2(22, 0), glm::ivec2(22, 0), glm::ivec2(23, 0), glm::ivec2(22, 0));
 }
 
 const CubeDef& CubeDefs::GetCubeDef(CubeID cubeID) const

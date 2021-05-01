@@ -5,6 +5,7 @@ in vec3 VertexNormal;
 in vec3 VertexPosition;
 in vec2 TexCoord;
 uniform sampler2D TextureAtlas;
+uniform float TimeOfDay;
 
 void main()
 {

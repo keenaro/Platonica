@@ -24,15 +24,17 @@ public:
 	float GetAspectRatio() const { return (float)dimensions.x / dimensions.y; };
 
 	void SetVSyncEnabled(bool enabled) { enableVsync = enabled;  glfwSwapInterval(enableVsync ? 1 : 0); };
+	void SetClearColour(const glm::vec3& inColour) { clearColour = inColour; };
+	void SetWireframeEnabled(bool enabled);
 
 private:
 	void UpdateGUI();
-	void SetWireframeEnabled(bool enabled);
 
 private:
 	Window();
 	glm::ivec2 dimensions;
 	bool enableVsync = true;
+	glm::vec3 clearColour;
 
 private:
 	struct GLFWwindow* window = nullptr;

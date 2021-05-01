@@ -14,7 +14,17 @@ enum CubeID : uint16_t
 	Wood = 4,
 	RuggedStone = 5,
 	Leaves = 6,
-
+	Ice = 7,
+	Water = 8,
+	Bricks_Red = 9,
+	Sand = 10,
+	Cactus = 11,
+	Bricks_Black = 12,
+	Planks_Birch = 13,
+	Planks_Pine = 14,
+	Planks_Oak = 15,
+	Chest = 16,
+	Furnace = 17,
 
 	ENUM_MAX
 };

@@ -12,6 +12,7 @@
 #include <limits>
 #include "ClientWorld.h"
 #include <sstream>
+#include "Window.h"
 
 World::World(const String& inWorldName, uint16_t inSeed, uint16_t inRegionLength) : RenderObject(true), UpdateObject(true)
 {
@@ -106,12 +107,21 @@ void World::DrawRegions() const
 
 void World::Update(float deltaTime)
 {
+	UpdateTimeOfDay(deltaTime);
 	UpdateNetClient();
 	player->Update(deltaTime);
 	UpdatePlayerHasMovedChunk();
 	UpdateRegions(deltaTime);
 	TryRequestChunks();
 	UpdateGUI();
+}
+
+void World::UpdateTimeOfDay(float deltaTime)
+{
+	timeOfDay = fmodf(timeOfDay + deltaTime, dayDuration);
+	const float pi = glm::pi<float>();
+	const float lerpProjection = (-sin((timeOfDay / dayDuration) * pi * 2 + pi/4) + 1.0f) / 2.0f;
+	Window::Instance().SetClearColour(glm::lerp(glm::vec3(0), skyColour, lerpProjection));
 }
 
 void World::UpdatePlayerHasMovedChunk()
@@ -227,6 +237,10 @@ void World::SetShaderUniformValues()
 	shader->SetMatrix4("ProjectionXform", player->GetProjectionXForm());
 	shader->SetFloat("SphericalWorldFalloff", sphericalFalloff);
 	shader->SetInt("TextureAtlas", 0);
+
+	const float pi = glm::pi<float>();
+	const float lerpProjection = (-sin((timeOfDay / dayDuration) * pi * 2 + pi / 4) + 1.0f) / 2.0f * 0.8f + 0.2f;
+	shader->SetFloat("TimeOfDay", lerpProjection );
 }
 
 int World::TranslateIntoWrappedWorld(int value) const
@@ -263,6 +277,12 @@ void World::UpdateGUI()
 	int chunkCount = 0;
 	for (auto& region : regions) chunkCount += region.second->GetChunkCount();
 	ImGui::Text("Chunk Count: %i", chunkCount);
+
+	const float timeScaled = timeOfDay / dayDuration * 24;
+	const int timeHour = timeScaled;
+	const int timeMinutes = (timeScaled - timeHour) * 60;
+	ImGui::Text("Time Of Day: %i:%i", timeHour, timeMinutes);
+
 
 	if(ImGui::Button("Clean Regions"))
 	{

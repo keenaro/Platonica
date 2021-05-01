@@ -66,7 +66,7 @@ void main()
 	vec3 maxFlippedNormal = abs(min(vec3(0.0), -VertexNormal));
 
 	vec2 xTexCoord = vec2(vertPos.z, inverseVertPos.y) / atlasLength * maxNormal.x;
-	vec2 yTexCoord = vec2(inverseVertPos.x, vertPos.z) / atlasLength * maxNormal.y;
+	vec2 yTexCoord = vec2(vertPos.x, vertPos.z) / atlasLength * maxNormal.y;
 	vec2 zTexCoord = vec2(inverseVertPos.x, inverseVertPos.y) / atlasLength * maxNormal.z;
 	vec2 xTexCoordFlipped = vec2(inverseVertPos.z, inverseVertPos.y) / atlasLength * maxFlippedNormal.x;
 	vec2 yTexCoordFlipped = vec2(inverseVertPos.x, inverseVertPos.z) / atlasLength * maxFlippedNormal.y;

@@ -63,6 +63,7 @@ protected:
 
 	int TranslateIntoWrappedWorld(int value) const;
 	void UpdatePlayerHasMovedChunk();
+	void UpdateTimeOfDay(float deltaTime);
 
 	virtual void UpdateGUI();
 	virtual char* GetGUIWindowName() const { return "Host World"; }
@@ -100,4 +101,8 @@ protected:
 	float sphericalFalloff = 0.005f;
 	String worldName = "World";
 	WorldMetaData metaData;
+	glm::vec3 skyColour = glm::vec3(0.3f, 0.6f, 0.8f);
+	const float dayDuration = 10.0f;
+	float timeOfDay = dayDuration / 2;
+
 };
