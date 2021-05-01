@@ -337,11 +337,16 @@ void Chunk::GenerateChunkData(const ChunkBlockData* extraChunkData, const int ex
 
 void Chunk::GrowTreeAtBlockPosition(const glm::ivec3& position)
 {
-	int treeRadius = 1;
-	int treeHeight = 5;
-	int treeLeavesThickness = 3;
+	const int treeRadius = 1;
+	const int treeHeight = 5;
+	const int treeLeavesThickness = 3;
 
-	if(position.y + treeHeight > CHUNK_LENGTH || position.x - treeRadius < 0 || position.x + treeRadius > CHUNK_LENGTH-1 || position.z - treeRadius < 0 || position.z + treeRadius > CHUNK_LENGTH - 1)
+	const bool treeNotContainedWithinChunk = position.y + treeHeight > CHUNK_LENGTH || position.x - treeRadius < 0 || position.x + treeRadius > CHUNK_LENGTH - 1 || position.z - treeRadius < 0 || position.z + treeRadius > CHUNK_LENGTH - 1;
+	
+	//Note this will only work if the tree is 1 block from up from the bottom of the chunk, as we want to keep all chunk generation self contained.
+	const bool isTreeFloating = position.y > 0 && data[position.x][position.y - 1][position.z].GetID() == Air;
+
+	if(treeNotContainedWithinChunk || isTreeFloating)
 	{
 		return; //Hack: We are too close to the chunk boundary don't bother.
 	}
