@@ -2,6 +2,7 @@
 #include "Camera.h"
 #include "UpdateObject.h"
 #include "TestObjects.h"
+#include "CubeDefs.h"
 
 class Player : public Camera, public UpdateObject
 {
@@ -25,4 +26,5 @@ private:
 	glm::vec3 rotationSpeed;
 	int reach = 7;
 	SharedPtr<BoxObject> reticle;
+	CubeID currentlySelectedBlock = Stone;
 };

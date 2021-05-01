@@ -57,7 +57,7 @@ void Player::ProcessJoystick(float deltaTime)
 		{
 			if (!holdingA)
 			{
-				world->PlaceBlockFromPositionInDirection(GetPosition(), GetDirection(), GetReach(), CubeID::Stone);
+				world->PlaceBlockFromPositionInDirection(GetPosition(), GetDirection(), GetReach(), currentlySelectedBlock);
 			}
 			holdingA = true;
 		}
@@ -104,10 +104,29 @@ void Player::UpdateGUI()
 	ImGui::PushItemWidth(100);
 	ImGui::SliderFloat("Speed Increase Multiplier", &speedIncreaseMulitplier, 10.0f, 100.0f);
 
+	const auto cubeDefs = GameManager::Instance().GetCubeDefs();
+	
+	if (ImGui::BeginCombo("##SelectedItem", cubeDefs->GetCubeDef(currentlySelectedBlock).GetName().c_str())) // The second parameter is the label previewed before opening the combo.
+	{
+		auto cubeDefsMap = cubeDefs->GetCubeDefsMap();
+
+		for (auto const& [key, val] : cubeDefsMap)
+		{
+			bool isSelected = (key == currentlySelectedBlock);
+			if (ImGui::Selectable(val.GetName().c_str(), isSelected))
+				currentlySelectedBlock = key;
+			if (isSelected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+
+	ImGui::SameLine(0, 10.f);
+	ImGui::Text("Selected Block");
+
 	ImGui::Text("Position: %s", glm::to_string(position).c_str());
 	ImGui::Text("Rotation: %s", glm::to_string(GetDirection()).c_str());
 
-	ImGui::Text("Right Direction: %s", glm::to_string(GetRightDirection()).c_str());
 
 	ImGui::End();
 }

@@ -14,6 +14,9 @@ enum CubeID : uint16_t
 	Wood = 4,
 	RuggedStone = 5,
 	Leaves = 6,
+
+
+	ENUM_MAX
 };
 
 class CubeDefs
@@ -24,6 +27,8 @@ public:
 public:
 	const CubeDef& GetCubeDef(CubeID cubeID) const;
 	bool ShouldAffectCull(CubeID id) const { return id != Air; };
+
+	const std::map<CubeID, CubeDef>& GetCubeDefsMap() const { return cubeEntries; };
 
 private:
 	std::map<CubeID, CubeDef> cubeEntries;
