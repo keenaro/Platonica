@@ -60,6 +60,8 @@ void WorldLoader::UpdateGUI()
 			ImGui::InputInt("Seed", &seed);
 			ImGui::InputInt("World Length", &regionLength);
 			regionLength += regionLength % 2 != 0.0f;
+			regionLength = glm::max(4, regionLength);
+
 			if (ImGui::Button("Create World!")) CreateOrLoadWorld(worldName, seed, regionLength);
 		}
 	}
