@@ -106,6 +106,9 @@ void Player::ProcessJoystick(float deltaTime)
 
 void Player::UpdateGUI()
 {
+	ImGui::SetNextWindowPos(ImVec2(300, 0), ImGuiCond_Once, ImVec2(0, 0));
+	ImGui::SetNextWindowSize(ImVec2(400, 150), ImGuiCond_Once);
+
 	ImGui::Begin("Player");
 
 	ImGui::PushItemWidth(100);

@@ -284,6 +284,9 @@ glm::ivec3 World::TranslateIntoWrappedWorld(const glm::ivec3& vec3ToTranslate) c
 
 void World::UpdateGUI()
 {
+	ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Once, ImVec2(0, 0));
+	ImGui::SetNextWindowSize(ImVec2(300, 300), ImGuiCond_Once);
+
 	ImGui::Begin(GetGUIWindowName());
 
 	const glm::ivec3& playerWorldPosition = player->GetPosition();

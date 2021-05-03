@@ -22,6 +22,7 @@ public:
 	void StopUpdatingObject(UpdateObject* object);
 
 	float GetAspectRatio() const { return (float)dimensions.x / dimensions.y; };
+	const glm::ivec2& GetDimensions() const { return dimensions; };
 
 	void SetVSyncEnabled(bool enabled) { enableVsync = enabled;  glfwSwapInterval(enableVsync ? 1 : 0); };
 	void SetClearColour(const glm::vec3& inColour) { clearColour = inColour; };
@@ -32,7 +33,7 @@ private:
 
 private:
 	Window();
-	glm::ivec2 dimensions;
+	glm::ivec2 dimensions = glm::ivec2(1920, 1080);
 	bool enableVsync = true;
 	glm::vec3 clearColour;
 

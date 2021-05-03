@@ -69,7 +69,6 @@ Window::Window()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-	dimensions = glm::ivec2(1920, 1080);
 	window = glfwCreateWindow(dimensions.x, dimensions.y, "Platonica", nullptr, nullptr);
 	clearColour = glm::vec3(0.1f);
 
@@ -146,6 +145,9 @@ void Window::SetWireframeEnabled(bool enabled)
 
 void Window::UpdateGUI()
 {
+	ImGui::SetNextWindowPos(ImVec2(dimensions.x, 0), ImGuiCond_Once, ImVec2(1, 0));
+	ImGui::SetNextWindowSize(ImVec2(350, 100), ImGuiCond_Once);
+
 	ImGui::Begin("Window");
 
 	bool vsyncEnabled = enableVsync;

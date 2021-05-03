@@ -32,6 +32,10 @@ void WorldLoader::Update(float deltaTime)
 
 void WorldLoader::UpdateGUI()
 {
+	const auto windowDimensions = Window::Instance().GetDimensions();
+	ImGui::SetNextWindowPos(ImVec2((float)windowDimensions.x / 2, (float)windowDimensions.y / 2), ImGuiCond_Once, ImVec2(0.5, 0.5));
+	ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_Once);
+
 	ImGui::Begin("World Loader");
 
 	if (ImGui::CollapsingHeader("Host World"))
