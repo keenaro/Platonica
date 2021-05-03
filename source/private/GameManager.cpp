@@ -6,7 +6,7 @@
 GameManager::GameManager()
 {
 	cubeDefs = MakeShared<CubeDefs>();
-	worldLoader = MakeShared<WorldLoader>();
+	CreateWorldLoader();
 }
 
 void GameManager::Exit()
@@ -15,4 +15,9 @@ void GameManager::Exit()
 	{
 		world->Exit();
 	}
+}
+
+void GameManager::CreateWorldLoader() 
+{ 
+	worldLoader = MakeShared<WorldLoader>(); 
 }

@@ -11,5 +11,5 @@ void main()
 {
     vec3 shading = vec3(VertexNormal.x * 0.5f + VertexNormal.y * 0.75f + VertexNormal.z);
     
-    FragColor = texture(TextureAtlas, TexCoord) * vec4(abs(shading), 1.0);
+    FragColor = texture(TextureAtlas, TexCoord) * vec4(abs(shading) * TimeOfDay, 1.0);
 }

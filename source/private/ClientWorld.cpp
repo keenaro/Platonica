@@ -2,10 +2,13 @@
 #include "RenderObject.h"
 #include "UpdateObject.h"
 #include <sstream>
+#include "Player.h"
+#include "GameManager.h"
+#include "AsyncChunkManager.h"
 
-ClientWorld::ClientWorld(ClientWorld& connectedWorld) : World(connectedWorld.metaData.seed, connectedWorld.metaData.regionLength, connectedWorld.netClient)
+ClientWorld::ClientWorld(ClientWorld& connectedWorld) : World(connectedWorld.metaData, connectedWorld.netClient)
 {
-	netPeers = connectedWorld.netPeers;
+	networkPlayers = connectedWorld.networkPlayers;
 }
 
 bool ClientWorld::TryConnect(const char* hostname, int port)
@@ -17,7 +20,7 @@ bool ClientWorld::TryConnect(const char* hostname, int port)
 	enet_address_set_host(&address, hostname);
 	address.port = port;
 	ENetPeer* netHost = enet_host_connect(netClient, &address, 2, 0);
-	netPeers.insert(netHost);
+	networkPlayers.push_back(MakeShared<NetworkPlayer>(netHost, 0));
 	if (netHost == nullptr)
 	{
 		DPrint("No available peers for initiating an ENet connection.");
@@ -25,7 +28,6 @@ bool ClientWorld::TryConnect(const char* hostname, int port)
 	}
 	
 	bool connected = false;
-	/* Wait up to 5 seconds for the connection attempt to succeed. */
 	while (enet_host_service(netClient, &event, 5000) > 0)
 	{
 		if (!connected && event.type == ENET_EVENT_TYPE_CONNECT)
@@ -74,6 +76,16 @@ void ClientWorld::InitialiseNetClient()
 	}
 }
 
+void ClientWorld::Exit()
+{
+	DisconnectFromHost();
+	chunkManager->Exit();
+
+	auto& gameManager = GameManager::Instance();
+	gameManager.ClearWorld();
+	gameManager.CreateWorldLoader();
+}
+
 void ClientWorld::ExitNetClient()
 {
 	if (netClient)
@@ -84,27 +96,29 @@ void ClientWorld::ExitNetClient()
 
 void ClientWorld::DisconnectFromHost()
 {
-	ENetPeer* netHost = GetNetHost();
-	if (netHost)
+	if (auto& hostPlayer = GetHostPlayer())
 	{
-		ENetEvent event;
-		enet_peer_disconnect(netHost, 0);
-		while (enet_host_service(netClient, &event, 3000) > 0)
+		if (ENetPeer* netHost = hostPlayer->GetNetPeer())
 		{
-			switch (event.type)
+			ENetEvent event;
+			enet_peer_disconnect(netHost, 0);
+			while (enet_host_service(netClient, &event, 3000) > 0)
 			{
-			case ENET_EVENT_TYPE_RECEIVE:
-				enet_packet_destroy(event.packet);
-				break;
-			case ENET_EVENT_TYPE_DISCONNECT:
-				enet_host_flush(netClient);
-				DPrint("Disconnection succeeded.");
-				netHost = nullptr;
-				return;
+				switch (event.type)
+				{
+				case ENET_EVENT_TYPE_RECEIVE:
+					enet_packet_destroy(event.packet);
+					break;
+				case ENET_EVENT_TYPE_DISCONNECT:
+					enet_host_flush(netClient);
+					DPrint("Disconnection succeeded.");
+					hostPlayer->SetNetPeer(nullptr);
+					return;
+				}
 			}
+			enet_peer_reset(netHost);
+			hostPlayer->SetNetPeer(nullptr);
 		}
-		enet_peer_reset(netHost);
-		netHost = nullptr;
 	}
 }
 
@@ -135,5 +149,42 @@ void ClientWorld::ClientRequestChunk(const glm::ivec3& chunkPosition)
 {
 	std::ostringstream os;
 	os << "rc " << std::to_string(chunkPosition.x) << " " << std::to_string(chunkPosition.y) << " " << std::to_string(chunkPosition.z);
-	SendPacket(os.str(), GetNetHost(), 1);
+	SendPacket(os.str(), GetHostPlayer()->GetNetPeer(), 1);
+}
+
+void ClientWorld::BroadcastPacket(const enet_uint8* data, const int dataSize, const int channel)
+{
+	if (auto& hostPlayer = GetHostPlayer())
+	{
+		SendPacket(data, dataSize, hostPlayer->GetNetPeer(), channel);
+	}
+}
+
+void ClientWorld::UpdateNetworkPlayerTransform(const ENetPeer* sender, const uint32_t uniqueId, const Transform<glm::vec3>& transform)
+{
+	if(!uniqueId)
+	{
+		GetHostPlayer()->SetTransform(transform);
+	}
+	else
+	{
+		for (auto& netPlayer : networkPlayers)
+		{
+			if (netPlayer->GetUniqueID() == uniqueId)
+			{
+				netPlayer->SetTransform(transform);
+				break;
+			}
+		}
+	}
+}
+
+void ClientWorld::OnPlayerDisconnect(const SharedPtr<NetworkPlayer> disconnectee)
+{
+	if(GetHostPlayer() == disconnectee)
+	{
+		doExit = true;
+	}
+
+	World::OnPlayerDisconnect(disconnectee);
 }

@@ -28,9 +28,11 @@ public:
 	VertexRenderObject(bool addToRenderList = true) : RenderObject(addToRenderList) { };
 	~VertexRenderObject();
 
+public:
+	virtual void Draw() override;
+
 protected:
 	virtual void SetVertexAttributePointer();
-	virtual void Draw() override;
 	virtual bool ShouldDraw() const override;
 
 protected:

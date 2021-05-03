@@ -2,6 +2,7 @@
 #include "GLFW/glfw3.h"
 #include "World.h"
 #include "Window.h"
+#include "ChunkRegion.h"
 #include "GameManager.h"
 
 Player::Player(Camera& camera) : Camera(camera), UpdateObject(false)
@@ -10,7 +11,7 @@ Player::Player(Camera& camera) : Camera(camera), UpdateObject(false)
 	rotationSpeed = glm::vec3(1.5f, 1.5f, 1.5f);
 	position = glm::vec3(0, 32, 0);
 	rotation = glm::vec3(glm::two_pi<float>() * 0.9f, -0.1f, 0.f);
-	reticle = MakeShared<BoxObject>(glm::vec2(1, Window::Instance().GetAspectRatio()) * 0.002f, true);
+	reticle = MakeShared<SquareObject>(glm::vec2(1, Window::Instance().GetAspectRatio()) * 0.002f, true);
 }
 
 void Player::Rotate(glm::vec3& rotate)
@@ -24,6 +25,12 @@ void Player::Rotate(glm::vec3& rotate)
 void Player::Update(float deltaTime)
 {
 	ProcessJoystick(deltaTime);
+	if(glm::distance(lastReplicatedPosition, position) > 0.2f)
+	{
+		lastReplicatedPosition = position;
+		GameManager::Instance().GetWorld()->SendLocalPlayerPosition();
+	}
+
 	UpdateGUI();
 }
 
@@ -106,7 +113,7 @@ void Player::UpdateGUI()
 
 	const auto cubeDefs = GameManager::Instance().GetCubeDefs();
 	
-	if (ImGui::BeginCombo("##SelectedItem", cubeDefs->GetCubeDef(currentlySelectedBlock).GetName().c_str())) // The second parameter is the label previewed before opening the combo.
+	if (ImGui::BeginCombo("##SelectedItem", cubeDefs->GetCubeDef(currentlySelectedBlock).GetName().c_str()))
 	{
 		auto cubeDefsMap = cubeDefs->GetCubeDefsMap();
 
@@ -129,4 +136,45 @@ void Player::UpdateGUI()
 
 
 	ImGui::End();
+}
+
+NetworkPlayer::NetworkPlayer(ENetPeer* inNetPeer, enet_uint32 inUniqueId) : Transform(Transform()), netPeer(inNetPeer), uniqueId(inUniqueId)
+{
+	const glm::vec3 headSize(0.4f);
+	const glm::vec3 bodySize(0.2f, 0.6f, 0.4f);
+	const glm::vec3 armSize(0.2f, 0.6f, 0.2f);
+	const glm::vec3 legSize(0.2f, 0.6f, 0.2f);
+
+	head = MakeShared<BoxObject>(glm::vec3(0), headSize, glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), String("RegionEntity"), false);
+	const auto& bodyHeightOffset = -(headSize.y + bodySize.y) / 2;
+	body = MakeShared<BoxObject>(glm::vec3(0, bodyHeightOffset, 0), bodySize, glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), String("RegionEntity"), false);
+	leftLeg = MakeShared<BoxObject>(glm::vec3(0, bodyHeightOffset - (bodySize.y + legSize.y)/2, legSize.z/2), legSize, glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), String("RegionEntity"), false);
+	rightLeg = MakeShared<BoxObject>(glm::vec3(0, bodyHeightOffset - (bodySize.y + legSize.y)/2, -legSize.z/2), legSize, glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), String("RegionEntity"), false);
+	leftArm = MakeShared<BoxObject>(glm::vec3(0, -(headSize.y+armSize.y)/2, (bodySize.z+armSize.z)/2), armSize, glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), String("RegionEntity"), false);
+	rightArm = MakeShared<BoxObject>(glm::vec3(0, -(headSize.y+armSize.y)/2, -(bodySize.z+armSize.z)/2), armSize, glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(0, 0), String("RegionEntity"), false);
+
+	DPrint("Registered Network Player.");
+}
+
+void NetworkPlayer::DrawPlayer()
+{
+	const auto world = GameManager::Instance().GetWorld();
+	const auto regions = world->GetRegions();
+
+	const auto wrappedPlayerPosition = world->TranslateIntoWrappedWorld(position);
+
+	auto shader = head->GetShader();
+	shader->SetVector3("Position", wrappedPlayerPosition);
+	shader->SetVector3("Rotation", rotation);
+
+	for(auto const& [key, val] : regions)
+	{
+		shader->SetIVector3("RegionPosition", val->GetWorldPosition());
+		head->Draw();
+		body->Draw();
+		leftLeg->Draw();
+		rightLeg->Draw();
+		leftArm->Draw();
+		rightArm->Draw();
+	}
 }

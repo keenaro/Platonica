@@ -26,7 +26,7 @@ public:
 	void SetWorld(SharedPtr<World> newWorld) { world = newWorld; };
 	void ClearWorld() { world = nullptr; };
 	void ClearWorldLoader() { worldLoader = nullptr; };
-
+	void CreateWorldLoader();
 	void Exit();
 
 private:

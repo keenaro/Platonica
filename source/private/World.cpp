@@ -13,6 +13,8 @@
 #include "ClientWorld.h"
 #include <sstream>
 #include "Window.h"
+#include <algorithm>
+#include "GameManager.h"
 
 World::World(const String& inWorldName, uint16_t inSeed, uint16_t inRegionLength) : RenderObject(true), UpdateObject(true)
 {
@@ -22,10 +24,12 @@ World::World(const String& inWorldName, uint16_t inSeed, uint16_t inRegionLength
 	{
 		metaData.seed = inSeed;
 		metaData.regionLength = inRegionLength;
+		metaData.timeOfDay = dayDuration / 2;
 		SaveMetaData();
 	}
 
 	shader = ShaderLibrary::GetShader(std::string("WorldCubes"));
+	entityShader = ShaderLibrary::GetShader(std::string("RegionEntity"));
 	player = MakeShared<Player>();
 	PerlinNoise::Reseed(metaData.seed);
 	LoadTexture("textures/atlas.png");
@@ -34,13 +38,13 @@ World::World(const String& inWorldName, uint16_t inSeed, uint16_t inRegionLength
 	InitialiseNetClient();
 }
 
-World::World(uint16_t inSeed, uint16_t inRegionLength, ENetHost* inClient) : RenderObject(true), UpdateObject(true)
+World::World(const WorldMetaData& inMetaData, ENetHost* inClient) : RenderObject(true), UpdateObject(true)
 {
-	metaData.seed = inSeed;
-	metaData.regionLength = inRegionLength;
+	metaData = inMetaData;
 	netClient = inClient;
 
 	shader = ShaderLibrary::GetShader(std::string("WorldCubes"));
+	entityShader = ShaderLibrary::GetShader(std::string("RegionEntity"));
 	player = MakeShared<Player>();
 	PerlinNoise::Reseed(metaData.seed);
 	LoadTexture("textures/atlas.png");
@@ -92,6 +96,23 @@ void World::Draw()
 	RenderObject::Draw();
 	DrawRegions();
 	glBindTexture(GL_TEXTURE_2D, 0);
+	DrawEntities();
+}
+
+void World::DrawEntities() const
+{
+	const glm::mat4 worldXform = glm::mat4(1);
+	const glm::mat4 viewWorldXform = player->GetViewXForm() * worldXform;
+	entityShader->Use();
+	entityShader->SetVector3("CameraPosition", player->GetPosition());
+	entityShader->SetMatrix4("ViewWorldXform", viewWorldXform);
+	entityShader->SetMatrix4("ProjectionXform", player->GetProjectionXForm());
+	entityShader->SetFloat("SphericalWorldFalloff", sphericalFalloff);
+
+	for (auto& netPlayer : networkPlayers)
+	{
+		netPlayer->DrawPlayer();
+	}
 }
 
 void World::DrawRegions() const
@@ -114,13 +135,15 @@ void World::Update(float deltaTime)
 	UpdateRegions(deltaTime);
 	TryRequestChunks();
 	UpdateGUI();
+
+	if (doExit) Exit();
 }
 
 void World::UpdateTimeOfDay(float deltaTime)
 {
-	timeOfDay = fmodf(timeOfDay + deltaTime, dayDuration);
+	metaData.timeOfDay = fmodf(metaData.timeOfDay + deltaTime, dayDuration);
 	const float pi = glm::pi<float>();
-	const float lerpProjection = (-sin((timeOfDay / dayDuration) * pi * 2 + pi/4) + 1.0f) / 2.0f;
+	const float lerpProjection = (-sin((metaData.timeOfDay / dayDuration) * pi * 2 + pi/4) + 1.0f) / 2.0f;
 	Window::Instance().SetClearColour(glm::lerp(glm::vec3(0), skyColour, lerpProjection));
 }
 
@@ -239,7 +262,7 @@ void World::SetShaderUniformValues()
 	shader->SetInt("TextureAtlas", 0);
 
 	const float pi = glm::pi<float>();
-	const float lerpProjection = (-sin((timeOfDay / dayDuration) * pi * 2 + pi / 4) + 1.0f) / 2.0f * 0.8f + 0.2f;
+	const float lerpProjection = (-sin((metaData.timeOfDay / dayDuration) * pi * 2 + pi / 4) + 1.0f) / 2.0f * 0.8f + 0.2f;
 	shader->SetFloat("TimeOfDay", lerpProjection );
 }
 
@@ -247,6 +270,11 @@ int World::TranslateIntoWrappedWorld(int value) const
 {
 	const int regionWorldLength = metaData.regionLength * CHUNK_LENGTH;
 	return (value + regionWorldLength * (abs(value / regionWorldLength) + 1)) % regionWorldLength;
+}
+
+glm::vec3 World::TranslateIntoWrappedWorld(const glm::vec3& vec3ToTranslate) const
+{
+	return glm::vec3(TranslateIntoWrappedWorld(vec3ToTranslate.x), (int)vec3ToTranslate.y, TranslateIntoWrappedWorld(vec3ToTranslate.z)) + vec3ToTranslate - glm::trunc(vec3ToTranslate);
 }
 
 glm::ivec3 World::TranslateIntoWrappedWorld(const glm::ivec3& vec3ToTranslate) const
@@ -278,7 +306,7 @@ void World::UpdateGUI()
 	for (auto& region : regions) chunkCount += region.second->GetChunkCount();
 	ImGui::Text("Chunk Count: %i", chunkCount);
 
-	const float timeScaled = timeOfDay / dayDuration * 24;
+	const float timeScaled = metaData.timeOfDay / dayDuration * 24;
 	const int timeHour = timeScaled;
 	const int timeMinutes = (timeScaled - timeHour) * 60;
 	ImGui::Text("Time Of Day: %i:%i", timeHour, timeMinutes);
@@ -288,6 +316,11 @@ void World::UpdateGUI()
 	{
 		SaveChunks();
 		regions.clear();
+	}
+
+	if (ImGui::Button("Leave World"))
+	{
+		Exit();
 	}
 
 	ImGui::End();
@@ -406,9 +439,9 @@ void World::ReplicatePlaceBlock(const glm::ivec3& chunkWorldPosition, const glm:
 	std::ostringstream os;
 	os << "pb " << std::to_string(position.x) << " " << std::to_string(position.y) << " " << std::to_string(position.z) << " " << std::to_string(cubeId);
 
-	for (auto peer : netPeers)
+	for (auto netPlayer : networkPlayers)
 	{
-		SendPacket(os.str(), peer);
+		SendPacket(os.str(), netPlayer->GetNetPeer());
 	}
 }
 
@@ -495,8 +528,13 @@ void World::Exit()
 	if (netClient) enet_host_destroy(netClient);
 	enet_deinitialize();
 
+	SaveMetaData();
 	SaveChunks();
 	chunkManager->Exit();
+
+	auto& gameManager = GameManager::Instance();
+	gameManager.ClearWorld();
+	gameManager.CreateWorldLoader();
 }
 
 void World::UpdateNetClient()
@@ -511,14 +549,12 @@ void World::UpdateNetClient()
 			{
 			case ENET_EVENT_TYPE_CONNECT:
 			{
-				printf("A new client connected from %x:%u.\n",
-					event.peer->address.host,
-					event.peer->address.port);
-				/* Store any relevant client information here. */
-				event.peer->data = "Client information";
-				netPeers.insert(event.peer);
+				DPrintf("A new client connected from %x:%u.\n", event.peer->address.host, event.peer->address.port);
+				BroadcastPlayerConnection(++lastPlayerUniqueId);
+				networkPlayers.push_back(MakeShared<NetworkPlayer>(event.peer, lastPlayerUniqueId));
+				SaveMetaData();
 				SendPacket((enet_uint8 *)&metaData, sizeof(WorldMetaData), event.peer, 0);
-				//enet_peer_send(event.peer, 0, packet);
+				InformPlayerConnections(networkPlayers.back());
 				break;
 			}
 			case ENET_EVENT_TYPE_RECEIVE:
@@ -526,11 +562,60 @@ void World::UpdateNetClient()
 				break;
 	
 			case ENET_EVENT_TYPE_DISCONNECT:
-				printf("%s disconnected.\n", event.peer->data);
-				netPeers.erase(event.peer);
+				DPrintf("%s disconnected.\n", event.peer->data);
+				for(auto& netPlayer : networkPlayers)
+				{
+					if (netPlayer->GetNetPeer() == event.peer)
+					{
+						BroadcastPlayerLeave(netPlayer->GetUniqueID());
+						OnPlayerDisconnect(netPlayer);
+						break;
+					}
+				}
 				event.peer->data = NULL;
 			}
 		}
+	}
+}
+
+void World::OnPlayerDisconnect(const SharedPtr<NetworkPlayer> disconnectee)
+{
+	networkPlayers.erase(std::remove(networkPlayers.begin(), networkPlayers.end(), disconnectee), networkPlayers.end());
+}
+
+void World::InformPlayerConnections(SharedPtr<NetworkPlayer> informee)
+{
+	for (auto& netPlayer : networkPlayers)
+	{
+		if (netPlayer != informee)
+		{
+			std::vector<enet_uint8> data = { 'p', 'j', ' ' };
+			const auto uniqueIdPtr = (enet_uint8*)&netPlayer->GetUniqueID();
+			data.insert(data.end(), uniqueIdPtr, uniqueIdPtr + sizeof(enet_uint32));
+			SendPacket(&data.front(), data.size(), informee->GetNetPeer(), 0);
+		}
+	}
+}
+
+void World::BroadcastPlayerConnection(const enet_uint32& uniqueId)
+{
+	std::vector<enet_uint8> data = { 'p', 'j', ' ' };
+	const auto uniqueIdPtr = (enet_uint8*)&uniqueId;
+	data.insert(data.end(), uniqueIdPtr, uniqueIdPtr + sizeof(enet_uint32));
+	for (auto& netPlayer : networkPlayers)
+	{
+		SendPacket(&data.front(), data.size(), netPlayer->GetNetPeer(), 0);
+	}
+}
+
+void World::BroadcastPlayerLeave(const enet_uint32& uniqueId)
+{
+	std::vector<enet_uint8> data = { 'p', 'l', ' ' };
+	const auto uniqueIdPtr = (enet_uint8*)&uniqueId;
+	data.insert(data.end(), uniqueIdPtr, uniqueIdPtr + sizeof(enet_uint32));
+	for (auto& netPlayer : networkPlayers)
+	{
+		SendPacket(&data.front(), data.size(), netPlayer->GetNetPeer(), 0);
 	}
 }
 
@@ -557,47 +642,153 @@ void World::HandlePacket(ENetEvent& event)
 	{
 	case 0: 
 	{
-		if (words[0] == "pb") { //Place Block
-			if (words.size() > 4) {
-				PlaceBlockAtPosition(glm::ivec3(std::stoi(words[1]), std::stoi(words[2]), std::stoi(words[3])), CubeID(std::atoi(words[4].c_str())), IsHostWorld());
-			}
-			else {
-				DPrint("pb needs more params.");
-			}
-		}
+		if (HandlePlaceBlockPacket(words, event)) break;
+		if (HandlePlayerPositionPacket(words, event)) break;
+		if (HandlePlayerJoinPacket(words, event)) break;
+		if (HandlePlayerLeavePacket(words, event)) break;
 	}
 
 	case 1:
 	{
-		if (words[0] == "rc") { //Request Chunk
-			if (words.size() > 3) {
-				SendChunkData(glm::ivec3(std::stoi(words[1]), std::stoi(words[2]), std::stoi(words[3])), event.peer);
-			}
-			else {
-				DPrint("rc needs more params.");
-			}
-		}
-		else if(words[0] == "gc") { //Generate Chunk
-			if (words.size() > 3) {
-				const int offset = words[0].length() + words[1].length() + words[2].length() + words[3].length() + 4;
-				const auto packetData = event.packet->data + offset;
-				auto blockData = (ChunkBlockData*)packetData;
-				std::vector<ChunkBlockData> chunkData;
-				for(int i = offset; i < event.packet->dataLength - 2; i+=sizeof(ChunkBlockData)) {
-					chunkData.push_back(*blockData);
-					DPrintf("Receving block at position %s with id %i \n", glm::to_string(blockData->GetPosition()).c_str(), blockData->blockId);
-					blockData++;
-				}
-				GenerateChunkFromPacket(glm::ivec3(std::stoi(words[1]), std::stoi(words[2]), std::stoi(words[3])), chunkData);
-			}
-			else {
-				DPrint("gc needs more params.");
-			}
-		}
+		if (HandleRequestChunkPacket(words, event)) break;
+		if (HandleGenerateChunkPacket(words, event)) break;
 	}
 	}
 	
 	enet_packet_destroy(event.packet);
+}
+
+bool World::HandlePlayerLeavePacket(const std::vector<String>& words, const ENetEvent& event)
+{
+	if (words[0] == "pl")
+	{
+		if (words.size() > 1)
+		{
+			const int offset = 3;
+			const auto packetData = event.packet->data + offset;
+			const auto playerUniqueId = *(enet_uint32*)packetData;
+			for(auto& networkPlayer : networkPlayers)
+			{
+				if (networkPlayer->GetUniqueID() == playerUniqueId)
+				{
+					OnPlayerDisconnect(networkPlayer);
+					break;
+				}
+			}
+		}
+		else {
+			DPrint("pl needs more params.");
+		}
+
+		return true;
+	}
+}
+
+
+bool World::HandlePlayerJoinPacket(const std::vector<String>& words, const ENetEvent& event)
+{
+	if(words[0] == "pj") {
+		if(words.size() > 1)
+		{
+			const int offset = 3;
+			const auto packetData = event.packet->data + offset;
+			const auto playerUniqueId = (enet_uint32*)packetData;
+			networkPlayers.push_back(MakeShared<NetworkPlayer>(nullptr, *playerUniqueId));
+		}
+		else {
+			DPrint("pj needs more params.");
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
+bool World::HandleGenerateChunkPacket(const std::vector<String>& words, const ENetEvent& event)
+{
+	if (words[0] == "gc") { //Generate Chunk
+		if (words.size() > 3) {
+			const int offset = words[0].length() + words[1].length() + words[2].length() + words[3].length() + 4;
+			const auto packetData = event.packet->data + offset;
+			auto blockData = (ChunkBlockData*)packetData;
+			std::vector<ChunkBlockData> chunkData;
+			for (int i = offset; i < event.packet->dataLength - 2; i += sizeof(ChunkBlockData)) {
+				chunkData.push_back(*blockData);
+				DPrintf("Receving block at position %s with id %i \n", glm::to_string(blockData->GetPosition()).c_str(), blockData->blockId);
+				blockData++;
+			}
+			GenerateChunkFromPacket(glm::ivec3(std::stoi(words[1]), std::stoi(words[2]), std::stoi(words[3])), chunkData);
+		}
+		else {
+			DPrint("gc needs more params.");
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
+bool World::HandleRequestChunkPacket(const std::vector<String>& words, const ENetEvent& event)
+{
+	if (words[0] == "rc") { //Request Chunk
+		if (words.size() > 3) {
+			SendChunkData(glm::ivec3(std::stoi(words[1]), std::stoi(words[2]), std::stoi(words[3])), event.peer);
+		}
+		else {
+			DPrint("rc needs more params.");
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
+
+bool World::HandlePlaceBlockPacket(const std::vector<String>& words, const ENetEvent& event)
+{
+	if (words[0] == "pb") { //Place Block
+		if (words.size() > 4) {
+			PlaceBlockAtPosition(glm::ivec3(std::stoi(words[1]), std::stoi(words[2]), std::stoi(words[3])), CubeID(std::atoi(words[4].c_str())), IsHostWorld());
+		}
+		else {
+			DPrint("pb needs more params.");
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
+bool World::HandlePlayerPositionPacket(const std::vector<String>& words, const ENetEvent& event)
+{
+	if (words[0] == "pp") //Player Position
+	{
+		const auto uniqueIdData = event.packet->data + 3;
+		const auto uniqueId = *(enet_uint32*)uniqueIdData;
+		const auto transformData = event.packet->data + 4 + sizeof(enet_uint32);
+		const auto playerTransform = (Transform<glm::vec3>*)transformData;
+
+		UpdateNetworkPlayerTransform(event.peer, uniqueId, *playerTransform);
+		if (IsHostWorld())
+		{
+			for (auto& netPlayer : networkPlayers)
+			{
+				if (netPlayer->GetNetPeer() == event.peer)
+				{
+					BroadcastPlayerPosition(netPlayer);
+					break;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	return false;
 }
 
 void World::SendChunkData(const glm::ivec3& chunkPosition, ENetPeer* peer)
@@ -651,9 +842,58 @@ void World::SendPacket(const String& data, ENetPeer* peer, const int channel)
 	SendPacket((enet_uint8*)data.c_str(), data.length(), peer, channel);
 }
 
+void World::BroadcastPacket(const enet_uint8* data, const int dataSize, const int channel)
+{
+	for (auto& netPlayerForReceive : networkPlayers)
+	{
+		SendPacket(data, dataSize, netPlayerForReceive->GetNetPeer(), channel);
+	}
+}
+
 void World::SendPacket(const enet_uint8* data, const int dataSize, ENetPeer* peer, const int channel)
 {
 	ENetPacket* packet = enet_packet_create(data, dataSize+1, ENET_PACKET_FLAG_RELIABLE);
 	enet_peer_send(peer, channel, packet);
 	enet_host_flush(netClient);
+}
+
+void World::SendLocalPlayerPosition()
+{
+	std::vector<enet_uint8> data = { 'p', 'p', ' ' };
+	const enet_uint32 hostUniqueId = 0;
+	const auto uniqueIdPtr = (enet_uint8*)&hostUniqueId;
+	data.insert(data.end(), uniqueIdPtr, uniqueIdPtr + sizeof(enet_uint32));
+	data.push_back(' ');
+	const auto transformData = (enet_uint8*)&player->GetTransform();
+	data.insert(data.end(), transformData, transformData + sizeof(Transform<glm::vec3>));
+	BroadcastPacket(&data.front(), data.size(), 0);
+}
+
+void World::BroadcastPlayerPosition(SharedPtr<NetworkPlayer> netPlayer)
+{
+	std::vector<enet_uint8> data = { 'p', 'p', ' ' };
+	const auto uniqueIdPtr = (enet_uint8*)&netPlayer->GetUniqueID();
+	data.insert(data.end(), uniqueIdPtr, uniqueIdPtr + sizeof(enet_uint32));
+	data.push_back(' ');
+	const auto transformData = (enet_uint8*)&netPlayer->GetTransform();
+	data.insert(data.end(), transformData, transformData + sizeof(Transform<glm::vec3>));
+
+	for (auto& netPlayerToSend : networkPlayers)
+	{
+		if (netPlayerToSend != netPlayer)
+		{
+			SendPacket(&data.front(), data.size(), netPlayerToSend->GetNetPeer(), 0);
+		}
+	}
+}
+
+void World::UpdateNetworkPlayerTransform(const ENetPeer* sender, const uint32_t uniqueId, const Transform<glm::vec3>& transform)
+{
+	for (auto& netPlayer : networkPlayers)
+	{
+		if (netPlayer->GetNetPeer() == sender)
+		{
+			netPlayer->SetTransform(transform);
+		}
+	}
 }

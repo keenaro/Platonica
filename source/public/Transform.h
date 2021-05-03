@@ -54,5 +54,8 @@ public:
 	Transform(T& inPosition = T(0), glm::vec3& inRotation = glm::vec3(0), glm::vec3& inScale = glm::vec3(1)) : 
 		Position(inPosition), Rotation(inRotation), Scale(inScale) { }
 
+public:
+	Transform& GetTransform() { return *this; };
+	void SetTransform(const Transform& transform) { position = transform.position; rotation = transform.rotation; scale = transform.scale; };
 };
 
