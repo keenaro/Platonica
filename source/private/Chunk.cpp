@@ -462,10 +462,8 @@ int Chunk::GetTerrainHeightAtWrappedPosition(const glm::vec3& position)
 	const unsigned int baseHeight = 20;
 	const float inclineMultiplier = 40.0f;
 	const int regionLength = world->GetRegionLength();
-	const float frequency = 2.f;
-	const float minFrequency = glm::min((float)regionLength, frequency > 0 ? 1 << int(frequency) : frequency);
-
-	const float pNoise = PerlinNoise::PNoise(glm::vec3(position.x / CHUNK_LENGTH, position.z / CHUNK_LENGTH, 0.0f) / minFrequency, glm::vec3(regionLength, regionLength, minFrequency) / minFrequency);
+	const int frequency = 4;
+	const float pNoise = PerlinNoise::PNoise(glm::vec3(position.x / CHUNK_LENGTH, position.z / CHUNK_LENGTH, 0.0f) / frequency, glm::vec3(regionLength, regionLength, regionLength) / frequency);
 	return pNoise * inclineMultiplier + baseHeight;
 }
 
