@@ -442,9 +442,16 @@ void World::ReplicatePlaceBlock(const glm::ivec3& chunkWorldPosition, const glm:
 	std::ostringstream os;
 	os << "pb " << std::to_string(position.x) << " " << std::to_string(position.y) << " " << std::to_string(position.z) << " " << std::to_string(cubeId);
 
-	for (auto netPlayer : networkPlayers)
+	if (IsHostWorld())
 	{
-		SendPacket(os.str(), netPlayer->GetNetPeer());
+		for (auto netPlayer : networkPlayers)
+		{
+			SendPacket(os.str(), netPlayer->GetNetPeer());
+		}
+	}
+	else 
+	{
+		SendPacket(os.str(), networkPlayers[0]->GetNetPeer());
 	}
 }
 
